@@ -7,7 +7,7 @@
    - Región: **South America (São Paulo)** — es la más cercana, importa para la latencia del chat
    - Guardar la contraseña de la base en un lugar seguro (no se vuelve a mostrar)
 
-2. En el proyecto nuevo, ir a **SQL Editor** y ejecutar en este orden:
+2. En el proyecto nuevo, ir a **SQL Editor** y pegar `schema_completo.sql` entero (es la concatenación de todo lo de abajo, en orden). Si preferís ir por partes, ejecutar en este orden:
 
    | Orden | Archivo | Qué hace |
    |-------|---------|----------|
@@ -28,6 +28,39 @@
 - **Tres intenciones**: `citas`, `amistad`, `estudio`. Un perfil elige una o varias y solo se cruza con gente que comparte al menos una. El swipe es **por intención**: podés querer a alguien de compañero de TP y no de cita, y son dos decisiones distintas.
 - **Chat interno** sobre Supabase Realtime. El match *es* la conversación: no hay tabla de conversaciones separada.
 - **Bucket de fotos privado**, servido con signed URLs. Un bucket público deja las fotos accesibles con el link para siempre, sin login y sin poder revocarlas.
+
+## Tests
+
+El schema está validado contra PostgreSQL 16 local, con stubs que imitan lo que
+aporta Supabase (`auth.uid()`, `auth.users`, `storage.objects`, la publicación
+de Realtime). Cubren mayoría de edad, creación de match recíproco, separación
+por intención, swipes duplicados, filtro de género mutuo, bloqueo bidireccional
+y cinco casos de RLS.
+
+```bash
+brew install postgresql@16
+export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"
+
+# levantar un postgres descartable
+initdb -D /tmp/uadepg -U postgres --locale=C -E UTF8
+pg_ctl -D /tmp/uadepg -o "-p 55433 -c unix_socket_directories= -c listen_addresses=127.0.0.1" -l /tmp/uadepg.log start
+
+# correr todo
+psql -h 127.0.0.1 -p 55433 -U postgres -c "create database uadetest;"
+psql -h 127.0.0.1 -p 55433 -U postgres -d uadetest -v ON_ERROR_STOP=1 \
+  -f tests/stub_supabase.sql \
+  -f migrations/0001_schema_inicial.sql \
+  -f migrations/0002_funciones.sql \
+  -f migrations/0003_rls.sql \
+  -f migrations/0004_storage.sql \
+  -f seed.sql \
+  -f tests/test_logica.sql
+
+pg_ctl -D /tmp/uadepg stop
+```
+
+Los stubs son solo para el test: en Supabase esos objetos ya existen y no hay
+que crearlos.
 
 ## Cosas a definir antes de programar
 

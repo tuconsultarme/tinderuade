@@ -37,11 +37,7 @@ create policy "perfiles visibles" on profiles
     or (
       activo
       and onboarding_completo
-      and not exists (
-        select 1 from bloqueos b
-        where (b.bloqueador_id = auth.uid() and b.bloqueado_id = profiles.id)
-           or (b.bloqueador_id = profiles.id and b.bloqueado_id = auth.uid())
-      )
+      and not hay_bloqueo(profiles.id)
     )
   );
 
@@ -150,11 +146,16 @@ create policy "enviar mensajes al match" on mensajes
     and es_participante_del_match(match_id)
   );
 
--- Permite marcar como leído; el contenido no se edita.
+-- Marcar como leído. La política sola no alcanza: un UPDATE permitido puede
+-- tocar cualquier columna, así que el receptor podría reescribir el contenido
+-- del mensaje que le mandaron. El grant por columna es lo que lo impide.
 create policy "marcar leido" on mensajes
   for update to authenticated
   using (es_participante_del_match(match_id) and emisor_id <> auth.uid())
   with check (es_participante_del_match(match_id));
+
+revoke update on mensajes from authenticated;
+grant update (leido_at) on mensajes to authenticated;
 
 -- ============================================================
 -- 8. Moderación
