@@ -1,0 +1,20 @@
+# Entorno — nunca commitear keys de Supabase
+.env
+.env.local
+.env*.local
+
+# Dependencias
+node_modules/
+
+# Build
+.next/
+out/
+dist/
+build/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
