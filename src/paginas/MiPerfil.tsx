@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useSesion } from '@/context/SesionContext'
 import { useMisFotos } from '@/hooks/useMisFotos'
@@ -253,6 +254,13 @@ function FormularioPerfil() {
       <Boton ancho onClick={() => void guardar()} disabled={guardando || MODO_DEMO}>
         {guardando ? 'Guardando…' : 'Guardar cambios'}
       </Boton>
+
+      <Link
+        to="/privacidad"
+        className="text-center text-sm text-grafito underline underline-offset-4"
+      >
+        Política de privacidad
+      </Link>
 
       {/* En demo no hay a dónde salir: sin sesión real, cerrarla dejaría la app
           trabada en la pantalla de login. */}

@@ -6,6 +6,7 @@ import { AppShell } from './components/shell/AppShell'
 import { Cargando } from './components/ui/Estados'
 import { useMatches } from './hooks/useMatches'
 import { Entrada } from './paginas/Entrada'
+import { Privacidad } from './paginas/Privacidad'
 import { Onboarding } from './paginas/Onboarding'
 import { Mazo } from './paginas/Mazo'
 import { Matches } from './paginas/Matches'
@@ -56,6 +57,10 @@ function Rutas() {
 
   return (
     <Routes>
+      {/* Pública siempre, con o sin sesión: hay que poder leerla antes de
+          registrarse. */}
+      <Route path="/privacidad" element={<Privacidad />} />
+
       <Route
         path="/entrar"
         element={

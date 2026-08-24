@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { DOMINIO_MAIL_REQUERIDO } from '@/lib/config'
 import { ShellPlano } from '@/components/shell/AppShell'
@@ -119,6 +120,14 @@ export function Entrada() {
           >
             {modo === 'entrar' ? 'Registrate' : 'Entrá'}
           </button>
+        </p>
+
+        <p className="text-center text-sm text-grafito">
+          {modo === 'registro' ? 'Al crear la cuenta aceptás nuestra ' : 'Leé nuestra '}
+          <Link to="/privacidad" className="underline underline-offset-4">
+            política de privacidad
+          </Link>
+          .
         </p>
       </div>
     </ShellPlano>
