@@ -43,17 +43,25 @@ const CARRERAS_DEMO: Carrera[] = [
 
   { id: 21, nombre: 'Abogacía', facultad: 'Ciencias Jurídicas y Sociales' },
   { id: 22, nombre: 'Licenciatura en Relaciones Internacionales', facultad: 'Ciencias Jurídicas y Sociales' },
-  { id: 23, nombre: 'Licenciatura en Psicología', facultad: 'Ciencias Jurídicas y Sociales' },
 
-  { id: 24, nombre: 'Diseño Gráfico', facultad: 'Diseño' },
-  { id: 25, nombre: 'Diseño Industrial', facultad: 'Diseño' },
-  { id: 26, nombre: 'Diseño de Indumentaria y Textil', facultad: 'Diseño' },
-  { id: 27, nombre: 'Diseño Multimedial', facultad: 'Diseño' },
+  { id: 23, nombre: 'Licenciatura en Gestión de Servicios de Salud', facultad: 'Ciencias de la Salud' },
+  { id: 24, nombre: 'Licenciatura en Nutrición', facultad: 'Ciencias de la Salud' },
+  { id: 25, nombre: 'Licenciatura en Psicología', facultad: 'Ciencias de la Salud' },
+  {
+    id: 26,
+    nombre: 'Licenciatura en Tecnología de Datos con Orientación en Salud Digital',
+    facultad: 'Ciencias de la Salud',
+  },
 
-  { id: 28, nombre: 'Licenciatura en Publicidad', facultad: 'Comunicación' },
-  { id: 29, nombre: 'Licenciatura en Comunicación Audiovisual', facultad: 'Comunicación' },
+  { id: 27, nombre: 'Diseño Gráfico', facultad: 'Diseño' },
+  { id: 28, nombre: 'Diseño Industrial', facultad: 'Diseño' },
+  { id: 29, nombre: 'Diseño de Indumentaria y Textil', facultad: 'Diseño' },
+  { id: 30, nombre: 'Diseño Multimedial', facultad: 'Diseño' },
 
-  { id: 30, nombre: 'Arquitectura', facultad: 'Arquitectura y Urbanismo' },
+  { id: 31, nombre: 'Licenciatura en Publicidad', facultad: 'Comunicación' },
+  { id: 32, nombre: 'Licenciatura en Comunicación Audiovisual', facultad: 'Comunicación' },
+
+  { id: 33, nombre: 'Arquitectura', facultad: 'Arquitectura y Urbanismo' },
 ]
 
 /**

@@ -43,7 +43,14 @@ insert into carreras (nombre, facultad) values
   -- Ciencias Jurídicas y Sociales
   ('Abogacía', 'Ciencias Jurídicas y Sociales'),
   ('Licenciatura en Relaciones Internacionales', 'Ciencias Jurídicas y Sociales'),
-  ('Licenciatura en Psicología', 'Ciencias Jurídicas y Sociales'),
+
+  -- Ciencias de la Salud (verificado contra
+  -- uade.edu.ar/facultad-de-ciencias-de-la-salud el 2026-08-24; Psicología
+  -- estaba mal puesta en Ciencias Jurídicas y Sociales, es de acá)
+  ('Licenciatura en Gestión de Servicios de Salud', 'Ciencias de la Salud'),
+  ('Licenciatura en Nutrición', 'Ciencias de la Salud'),
+  ('Licenciatura en Psicología', 'Ciencias de la Salud'),
+  ('Licenciatura en Tecnología de Datos con Orientación en Salud Digital', 'Ciencias de la Salud'),
 
   -- Diseño
   ('Diseño Gráfico', 'Diseño'),
