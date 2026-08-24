@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { urlsFirmadas } from '@/lib/fotos'
 import { useSesion } from '@/context/SesionContext'
 import { ShellPlano } from '@/components/shell/AppShell'
+import { CarruselFotos } from '@/components/mazo/CarruselFotos'
 import { Cargando, Vacio, Aviso } from '@/components/ui/Estados'
 import { Boton } from '@/components/ui/Boton'
 import { MODO_DEMO, perfilDetalleDemo, hayMatchDemo } from '@/lib/demo'
@@ -164,18 +165,9 @@ export function PerfilDetalle() {
 
       <div className="px-4 py-4 flex flex-col gap-5">
         {detalle.fotos.length > 0 && (
-          <ul className="flex flex-col gap-2">
-            {detalle.fotos.map((src, i) => (
-              <li key={src} className="rounded-chip overflow-hidden border border-lapiz">
-                <img
-                  src={src}
-                  alt={`Foto ${i + 1} de ${detalle.nombre}`}
-                  loading={i === 0 ? 'eager' : 'lazy'}
-                  className="w-full aspect-[3/4] object-cover"
-                />
-              </li>
-            ))}
-          </ul>
+          <div className="relative w-full aspect-[3/4] rounded-chip overflow-hidden border border-lapiz bg-lapiz/40">
+            <CarruselFotos fotos={detalle.fotos} nombre={detalle.nombre} />
+          </div>
         )}
 
         <div>
