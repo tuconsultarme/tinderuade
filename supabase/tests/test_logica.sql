@@ -154,3 +154,22 @@ begin
 exception when check_violation then
   raise notice 'OK: autoswipe rechazado';
 end $$;
+
+\echo ''
+\echo '=== TEST 16: RLS - el bloqueo tambien tapa fotos, intenciones y materias ==='
+\echo '--- Caro bloqueo a Ana (test 10); Caro no debe poder leerle fotos/intenciones/materias'
+insert into fotos (profile_id, storage_path) values
+  ('11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111/foto.webp');
+set request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+set role authenticated;
+select count(*) as fotos_de_ana_para_caro from fotos where profile_id = '11111111-1111-1111-1111-111111111111';
+select count(*) as intenciones_de_ana_para_caro from profile_intenciones where profile_id = '11111111-1111-1111-1111-111111111111';
+select count(*) as materias_de_ana_para_caro from profile_materias where profile_id = '11111111-1111-1111-1111-111111111111';
+reset role;
+\echo '--- (las tres tienen que dar 0)'
+\echo '--- pero Beto, sin bloqueo con Ana, si debe poder verlas'
+set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+set role authenticated;
+select count(*) as fotos_de_ana_para_beto from fotos where profile_id = '11111111-1111-1111-1111-111111111111';
+reset role;
+\echo '--- (tiene que dar 1)'

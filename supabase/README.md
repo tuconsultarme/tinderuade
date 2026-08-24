@@ -16,11 +16,15 @@
    | 3 | `migrations/0003_rls.sql` | Row Level Security en todas las tablas + Realtime del chat |
    | 4 | `migrations/0004_storage.sql` | Bucket privado de fotos y sus políticas |
    | 5 | `migrations/0005_reordenar_fotos.sql` | Función para reordenar el carrusel de fotos |
-   | 6 | `seed.sql` | Sedes y carreras de UADE |
+   | 6 | `migrations/0006_visibilidad_fotos_bloqueos.sql` | Cierra un bypass: fotos, intenciones y materias ahora respetan bloqueos y perfiles inactivos, igual que ya hacía `profiles` |
+   | 7 | `seed.sql` | Sedes y carreras de UADE |
 
-   > **Si la base ya estaba creada antes del front:** falta solo la `0005`.
-   > Pegá ese archivo en el SQL Editor. Sin ella, "hacer principal" y borrar
-   > fotos del perfil fallan; el resto de la app anda igual.
+   > **Si la base ya estaba creada antes del front:** falta la `0005` y la
+   > `0006`. Pegá esos dos archivos en el SQL Editor, en ese orden. Sin la
+   > `0005`, "hacer principal" y borrar fotos del perfil fallan. Sin la `0006`,
+   > alguien que te bloqueó puede seguir viendo tus fotos pidiéndolas por API
+   > directo, aunque en la app no te aparezca más — el resto anda igual sin
+   > ninguna de las dos.
 
 3. En **Project Settings → API**, copiar y guardar:
    - Project URL
@@ -36,12 +40,12 @@
 
 ## Tests
 
-21 tests contra PostgreSQL 16 local, con stubs que imitan lo que aporta Supabase
+22 tests contra PostgreSQL 16 local, con stubs que imitan lo que aporta Supabase
 (`auth.uid()`, `auth.users`, `storage.objects`, la publicación de Realtime).
 
-- `tests/test_logica.sql` (15): mayoría de edad, creación de match recíproco,
+- `tests/test_logica.sql` (16): mayoría de edad, creación de match recíproco,
   separación por intención, swipes duplicados, filtro de género mutuo, bloqueo
-  bidireccional y cinco casos de RLS.
+  bidireccional y seis casos de RLS.
 - `tests/test_fotos.sql` (6): reordenamiento del carrusel, rechazo de fotos
   ajenas, rechazo de subconjuntos y tope de 6 fotos.
 

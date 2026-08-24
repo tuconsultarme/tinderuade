@@ -1,6 +1,6 @@
 -- UADencuentros — schema completo
 -- Generado desde migrations/ + seed.sql. Pegar todo junto en el SQL Editor de Supabase.
--- Validado contra PostgreSQL 16 con stubs de auth/storage: 21 tests funcionales en verde.
+-- Validado contra PostgreSQL 16 con stubs de auth/storage: 22 tests funcionales en verde.
 
 -- ############################################################
 -- ### migrations/0001_schema_inicial.sql
@@ -782,6 +782,78 @@ end;
 $$;
 
 -- ############################################################
+-- ### migrations/0006_visibilidad_fotos_bloqueos.sql
+-- ############################################################
+
+-- UADencuentros — cierra el bypass de bloqueos en fotos, intenciones y materias
+-- Ejecutar después de 0005.
+--
+-- "perfiles visibles" (0003_rls.sql) ya exige activo + onboarding_completo +
+-- sin bloqueo mutuo para ver el perfil de otra persona. Pero `fotos`,
+-- `profile_intenciones` y `profile_materias` tenían políticas de SELECT que
+-- no replicaban esa condición:
+--   - "fotos visibles" comprobaba `exists (select 1 from profiles p where
+--     p.id = fotos.profile_id)`, que por la FK de `fotos.profile_id` da
+--     siempre true — en la práctica era "cualquiera ve las fotos de
+--     cualquiera".
+--   - "intenciones visibles" y "materias de perfil visibles" eran
+--     directamente `using (true)`.
+--   - La política de storage "ver fotos de perfil" solo miraba
+--     `bucket_id = 'fotos-perfil'`, sin ninguna relación con quién bloqueó a
+--     quién.
+--
+-- En la UI esto no se notaba porque el mazo, matches y "ver perfil completo"
+-- siempre pasan por `get_candidatos()` o por la política de `profiles`, que sí
+-- filtran bloqueos. Pero golpeando la API REST de Supabase directo (o el
+-- endpoint de storage) se podían pedir fotos, intenciones o materias de
+-- alguien que te bloqueó, o de un perfil inactivo o sin onboarding. El
+-- bloqueo tiene que valer a nivel de datos, no solo en las pantallas que arma
+-- el front.
+
+create or replace function perfil_visible_para_mi(p_profile_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select p_profile_id = auth.uid()
+    or exists (
+      select 1 from profiles p
+      where p.id = p_profile_id
+        and p.activo
+        and p.onboarding_completo
+        and not hay_bloqueo(p.id)
+    );
+$$;
+
+drop policy "fotos visibles" on fotos;
+create policy "fotos visibles" on fotos
+  for select to authenticated
+  using (perfil_visible_para_mi(fotos.profile_id));
+
+drop policy "intenciones visibles" on profile_intenciones;
+create policy "intenciones visibles" on profile_intenciones
+  for select to authenticated
+  using (perfil_visible_para_mi(profile_intenciones.profile_id));
+
+drop policy "materias de perfil visibles" on profile_materias;
+create policy "materias de perfil visibles" on profile_materias
+  for select to authenticated
+  using (perfil_visible_para_mi(profile_materias.profile_id));
+
+-- El path de cada objeto es {profile_id}/{archivo}; la política de insert ya
+-- asume ese formato (0004_storage.sql), así que el cast a uuid es seguro acá
+-- también.
+drop policy "ver fotos de perfil" on storage.objects;
+create policy "ver fotos de perfil" on storage.objects
+  for select to authenticated
+  using (
+    bucket_id = 'fotos-perfil'
+    and perfil_visible_para_mi(((storage.foldername(name))[1])::uuid)
+  );
+
+-- ############################################################
 -- ### seed.sql
 -- ############################################################
 
@@ -810,32 +882,49 @@ insert into carreras (nombre, facultad) values
   ('Licenciatura en Gestión de Tecnología de la Información', 'Ingeniería y Ciencias Exactas'),
   ('Licenciatura en Ciencia de Datos', 'Ingeniería y Ciencias Exactas'),
 
-  -- Ciencias Económicas
+  -- Ciencias Económicas (verificado contra uade.edu.ar/facultad-de-ciencias-economicas
+  -- el 2026-08-24; se dejan afuera las variantes por sede, las dobles
+  -- titulaciones y las diplomaturas cortas)
   ('Contador Público', 'Ciencias Económicas'),
   ('Licenciatura en Administración de Empresas', 'Ciencias Económicas'),
-  ('Licenciatura en Marketing', 'Ciencias Económicas'),
   ('Licenciatura en Comercio Internacional', 'Ciencias Económicas'),
+  ('Licenciatura en Dirección de Negocios Globales (GBM)', 'Ciencias Económicas'),
+  ('Licenciatura en Dirección en Finanzas Globales (GFM)', 'Ciencias Económicas'),
   ('Licenciatura en Economía', 'Ciencias Económicas'),
   ('Licenciatura en Finanzas', 'Ciencias Económicas'),
-  ('Licenciatura en Recursos Humanos', 'Ciencias Económicas'),
+  ('Licenciatura en Finanzas Digitales', 'Ciencias Económicas'),
+  ('Licenciatura en Marketing', 'Ciencias Económicas'),
   ('Licenciatura en Negocios Digitales', 'Ciencias Económicas'),
+  ('Licenciatura en Recursos Humanos', 'Ciencias Económicas'),
+  ('Tecnicatura Universitaria en Comercio Electrónico e Innovación Digital', 'Ciencias Económicas'),
+  ('Tecnicatura Universitaria en Finanzas Digitales', 'Ciencias Económicas'),
 
   -- Ciencias Jurídicas y Sociales
   ('Abogacía', 'Ciencias Jurídicas y Sociales'),
   ('Licenciatura en Relaciones Internacionales', 'Ciencias Jurídicas y Sociales'),
-  ('Licenciatura en Psicología', 'Ciencias Jurídicas y Sociales'),
 
-  -- Diseño y Comunicación Multimedial
-  ('Diseño Gráfico', 'Diseño y Comunicación Multimedial'),
-  ('Diseño Industrial', 'Diseño y Comunicación Multimedial'),
-  ('Diseño de Indumentaria y Textil', 'Diseño y Comunicación Multimedial'),
-  ('Diseño Multimedial', 'Diseño y Comunicación Multimedial'),
-  ('Licenciatura en Publicidad', 'Diseño y Comunicación Multimedial'),
-  ('Licenciatura en Comunicación Audiovisual', 'Diseño y Comunicación Multimedial'),
-  ('Arquitectura', 'Diseño y Comunicación Multimedial')
+  -- Ciencias de la Salud (verificado contra
+  -- uade.edu.ar/facultad-de-ciencias-de-la-salud el 2026-08-24; Psicología
+  -- estaba mal puesta en Ciencias Jurídicas y Sociales, es de acá)
+  ('Licenciatura en Gestión de Servicios de Salud', 'Ciencias de la Salud'),
+  ('Licenciatura en Nutrición', 'Ciencias de la Salud'),
+  ('Licenciatura en Psicología', 'Ciencias de la Salud'),
+  ('Licenciatura en Tecnología de Datos con Orientación en Salud Digital', 'Ciencias de la Salud'),
+
+  -- Diseño
+  ('Diseño Gráfico', 'Diseño'),
+  ('Diseño Industrial', 'Diseño'),
+  ('Diseño de Indumentaria y Textil', 'Diseño'),
+  ('Diseño Multimedial', 'Diseño'),
+
+  -- Comunicación
+  ('Licenciatura en Publicidad', 'Comunicación'),
+  ('Licenciatura en Comunicación Audiovisual', 'Comunicación'),
+
+  -- Arquitectura y Urbanismo
+  ('Arquitectura', 'Arquitectura y Urbanismo')
 on conflict (nombre) do nothing;
 
 -- Las materias van vacías a propósito: conviene cargarlas por carrera cuando
 -- definamos el flujo de "buscar compañero de estudio", para no llenar la tabla
 -- con un plan de estudios que quizás no usemos.
-
