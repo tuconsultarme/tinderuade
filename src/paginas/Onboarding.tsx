@@ -9,6 +9,7 @@ import { Boton } from '@/components/ui/Boton'
 import { Aviso, Cargando } from '@/components/ui/Estados'
 import { GestorFotos } from '@/components/GestorFotos'
 import { INTENCIONES } from '@/lib/intenciones'
+import { FACULTADES } from '@/lib/facultades'
 import type { Genero, Intencion } from '@/lib/tipos'
 
 const GENEROS: { valor: Genero; etiqueta: string }[] = [
@@ -33,6 +34,7 @@ export function Onboarding() {
   const [nombre, setNombre] = useState('')
   const [nacimiento, setNacimiento] = useState('')
   const [genero, setGenero] = useState<Genero | ''>('')
+  const [facultad, setFacultad] = useState('')
   const [carreraId, setCarreraId] = useState('')
   const [sedeId, setSedeId] = useState('')
   const [anioIngreso, setAnioIngreso] = useState('')
@@ -224,16 +226,34 @@ export function Onboarding() {
                 ))}
               </CampoSelect>
               <CampoSelect
+                etiqueta="Facultad"
+                value={facultad}
+                onChange={(e) => {
+                  setFacultad(e.target.value)
+                  setCarreraId('')
+                }}
+              >
+                <option value="">Prefiero no decir</option>
+                {FACULTADES.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </CampoSelect>
+              <CampoSelect
                 etiqueta="Carrera"
                 value={carreraId}
                 onChange={(e) => setCarreraId(e.target.value)}
+                disabled={!facultad}
               >
-                <option value="">Prefiero no decir</option>
-                {carreras.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                  </option>
-                ))}
+                <option value="">{facultad ? 'Prefiero no decir' : 'Elegí tu facultad primero'}</option>
+                {carreras
+                  .filter((c) => c.facultad === facultad)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre}
+                    </option>
+                  ))}
               </CampoSelect>
               <CampoSelect etiqueta="Sede" value={sedeId} onChange={(e) => setSedeId(e.target.value)}>
                 <option value="">Prefiero no decir</option>

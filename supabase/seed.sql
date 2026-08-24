@@ -38,14 +38,18 @@ insert into carreras (nombre, facultad) values
   ('Licenciatura en Relaciones Internacionales', 'Ciencias Jurídicas y Sociales'),
   ('Licenciatura en Psicología', 'Ciencias Jurídicas y Sociales'),
 
-  -- Diseño y Comunicación Multimedial
-  ('Diseño Gráfico', 'Diseño y Comunicación Multimedial'),
-  ('Diseño Industrial', 'Diseño y Comunicación Multimedial'),
-  ('Diseño de Indumentaria y Textil', 'Diseño y Comunicación Multimedial'),
-  ('Diseño Multimedial', 'Diseño y Comunicación Multimedial'),
-  ('Licenciatura en Publicidad', 'Diseño y Comunicación Multimedial'),
-  ('Licenciatura en Comunicación Audiovisual', 'Diseño y Comunicación Multimedial'),
-  ('Arquitectura', 'Diseño y Comunicación Multimedial')
+  -- Diseño
+  ('Diseño Gráfico', 'Diseño'),
+  ('Diseño Industrial', 'Diseño'),
+  ('Diseño de Indumentaria y Textil', 'Diseño'),
+  ('Diseño Multimedial', 'Diseño'),
+
+  -- Comunicación
+  ('Licenciatura en Publicidad', 'Comunicación'),
+  ('Licenciatura en Comunicación Audiovisual', 'Comunicación'),
+
+  -- Arquitectura y Urbanismo
+  ('Arquitectura', 'Arquitectura y Urbanismo')
 on conflict (nombre) do nothing;
 
 -- Las materias van vacías a propósito: conviene cargarlas por carrera cuando

@@ -8,6 +8,7 @@ import { CampoArea, CampoSelect, CampoTexto } from '@/components/ui/Campo'
 import { Boton } from '@/components/ui/Boton'
 import { Aviso, Cargando } from '@/components/ui/Estados'
 import { INTENCIONES } from '@/lib/intenciones'
+import { FACULTADES } from '@/lib/facultades'
 import { MODO_DEMO } from '@/lib/demo'
 import type { Intencion } from '@/lib/tipos'
 
@@ -30,6 +31,7 @@ function FormularioPerfil() {
   const { carreras, sedes } = useCatalogos()
 
   const [bio, setBio] = useState(datos.bio ?? '')
+  const [facultad, setFacultad] = useState('')
   const [carreraId, setCarreraId] = useState(datos.carrera_id ? String(datos.carrera_id) : '')
   const [sedeId, setSedeId] = useState(datos.sede_id ? String(datos.sede_id) : '')
   const [instagram, setInstagram] = useState(datos.instagram ?? '')
@@ -54,6 +56,14 @@ function FormularioPerfil() {
       vigente = false
     }
   }, [userId])
+
+  // La carrera guardada no trae su facultad: se busca en el catálogo apenas
+  // llega, una sola vez, para que el combo de Carrera arranque ya filtrado.
+  useEffect(() => {
+    if (facultad || !carreraId || carreras.length === 0) return
+    const actual = carreras.find((c) => String(c.id) === carreraId)
+    if (actual) setFacultad(actual.facultad)
+  }, [carreras, carreraId, facultad])
 
   async function guardar() {
     setError(null)
@@ -170,13 +180,36 @@ function FormularioPerfil() {
         ayuda={`${bio.length}/500`}
       />
 
-      <CampoSelect etiqueta="Carrera" value={carreraId} onChange={(e) => setCarreraId(e.target.value)}>
+      <CampoSelect
+        etiqueta="Facultad"
+        value={facultad}
+        onChange={(e) => {
+          setFacultad(e.target.value)
+          setCarreraId('')
+        }}
+      >
         <option value="">Prefiero no decir</option>
-        {carreras.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.nombre}
+        {FACULTADES.map((f) => (
+          <option key={f} value={f}>
+            {f}
           </option>
         ))}
+      </CampoSelect>
+
+      <CampoSelect
+        etiqueta="Carrera"
+        value={carreraId}
+        onChange={(e) => setCarreraId(e.target.value)}
+        disabled={!facultad}
+      >
+        <option value="">{facultad ? 'Prefiero no decir' : 'Elegí tu facultad primero'}</option>
+        {carreras
+          .filter((c) => c.facultad === facultad)
+          .map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre}
+            </option>
+          ))}
       </CampoSelect>
 
       <CampoSelect etiqueta="Sede" value={sedeId} onChange={(e) => setSedeId(e.target.value)}>

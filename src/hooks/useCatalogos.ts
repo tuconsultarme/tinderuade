@@ -9,14 +9,14 @@ const SEDES_DEMO: Sede[] = [
 ]
 
 const CARRERAS_DEMO: Carrera[] = [
-  { id: 1, nombre: 'Abogacía', facultad: 'Derecho' },
+  { id: 1, nombre: 'Abogacía', facultad: 'Ciencias Jurídicas y Sociales' },
   { id: 2, nombre: 'Administración de Empresas', facultad: 'Ciencias Económicas' },
-  { id: 3, nombre: 'Comunicación', facultad: 'Comunicación y Diseño' },
+  { id: 3, nombre: 'Licenciatura en Comunicación Audiovisual', facultad: 'Comunicación' },
   { id: 4, nombre: 'Contador Público', facultad: 'Ciencias Económicas' },
-  { id: 5, nombre: 'Diseño Multimedial', facultad: 'Comunicación y Diseño' },
-  { id: 6, nombre: 'Ingeniería en Informática', facultad: 'Ingeniería' },
-  { id: 7, nombre: 'Ingeniería Industrial', facultad: 'Ingeniería' },
-  { id: 8, nombre: 'Psicología', facultad: 'Ciencias Sociales' },
+  { id: 5, nombre: 'Diseño Multimedial', facultad: 'Diseño' },
+  { id: 6, nombre: 'Ingeniería en Informática', facultad: 'Ingeniería y Ciencias Exactas' },
+  { id: 7, nombre: 'Ingeniería Industrial', facultad: 'Ingeniería y Ciencias Exactas' },
+  { id: 8, nombre: 'Licenciatura en Psicología', facultad: 'Ciencias Jurídicas y Sociales' },
 ]
 
 /**
