@@ -128,12 +128,22 @@ export function Entrada() {
 /** Los mensajes de Supabase vienen en inglés y son crípticos para el usuario. */
 function traducir(mensaje: string): string {
   const m = mensaje.toLowerCase()
+  // "Invalid login credentials" es el mismo mensaje tanto si la contraseña
+  // está mal como si el mail no existe, a propósito: si el error dijera cuál
+  // de las dos cosas pasó, cualquiera podría usar este formulario para
+  // averiguar qué mails están registrados.
   if (m.includes('invalid login credentials')) return 'Mail o contraseña incorrectos.'
   if (m.includes('user already registered')) return 'Ya hay una cuenta con ese mail. Probá entrar.'
   if (m.includes('email not confirmed')) return 'Todavía no confirmaste el mail. Revisá tu casilla.'
   if (m.includes('password')) return 'La contraseña no cumple los requisitos mínimos.'
   if (m.includes('rate limit') || m.includes('too many')) {
     return 'Demasiados intentos seguidos. Esperá un momento.'
+  }
+  // Esto no viene de Supabase: es el fetch del navegador fallando antes de
+  // llegar a mandar el pedido (sin conexión, extensión que lo bloquea, etc.).
+  // Cada navegador lo redacta distinto.
+  if (m.includes('failed to fetch') || m.includes('networkerror') || m.includes('load failed')) {
+    return 'No se pudo conectar. Revisá tu conexión e intentá de nuevo.'
   }
   return mensaje
 }
