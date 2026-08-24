@@ -1,0 +1,152 @@
+@import 'tailwindcss';
+
+/* ============================================================
+   Tokens — "papel y marcador"
+   Base de papel brillante, acentos de resaltador fluo.
+
+   REGLA DURA DEL SISTEMA: los fluo (mandarina, lima, agua) son SIEMPRE
+   relleno debajo de tinta. Nunca texto sobre papel. Igual que un resaltador
+   real. Eso da 9:1 a 14:1 de contraste y deja fuera, por concepto y no por
+   parche, el único caso que rompería accesibilidad.
+
+   SEGUNDA REGLA DURA: cero box-shadow en todo el proyecto. La profundidad
+   sale del color y del movimiento.
+   ============================================================ */
+
+@theme {
+  --color-papel: #f8f8f4;
+  --color-tinta: #161a20;
+  --color-grafito: #5e6672;
+  --color-lapiz: #e3e4dc;
+
+  /* Un fluo por intención. El color te dice en qué modo estás. */
+  --color-mandarina: #ffa24d; /* citas   */
+  --color-lima: #d8f94f; /* amistad */
+  --color-agua: #66e8dc; /* estudio */
+
+  --font-display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, monospace;
+
+  --radius-chip: 6px;
+
+  --ease-salida: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ============================================================
+   El acento cambia con el modo activo. Todo el chrome lo lee desde
+   var(--acento), así que mover el conmutador repinta la app entera.
+   ============================================================ */
+
+:root {
+  --acento: var(--color-mandarina);
+}
+[data-modo='citas'] {
+  --acento: var(--color-mandarina);
+}
+[data-modo='amistad'] {
+  --acento: var(--color-lima);
+}
+[data-modo='estudio'] {
+  --acento: var(--color-agua);
+}
+
+@layer base {
+  html {
+    /* Sin ajuste automático de tipografía al rotar el celular. */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-papel);
+    color: var(--color-tinta);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+
+    /* App shell: el body no scrollea nunca; scrollean los paneles internos.
+       overscroll-behavior mata el pull-to-refresh, que en una app de swipe
+       se dispara sin querer al arrastrar una card hacia abajo. */
+    overscroll-behavior: none;
+  }
+
+  /* El tap highlight azul de iOS/Android arruina la sensación de app. */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 0.95;
+    /* Archivo es variable: el eje de ancho es lo que le da carácter. */
+    font-variation-settings: 'wdth' 112;
+  }
+
+  /* Foco visible siempre, y que no quede tapado por el borde de la card. */
+  :focus-visible {
+    outline: 3px solid var(--color-tinta);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Los números de datos (edad, cupos, hora) tienen que alinear en columna. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Etiqueta de dato: mono, chica, espaciada. Se usa para carrera, año,
+     materias en común, hora del mensaje. */
+  .dato {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  /* Marca de resaltador: relleno fluo detrás de tinta.
+
+     El fondo de un inline ocupa toda la caja em de la fuente, que es más alta
+     que la línea cuando el line-height es apretado. En un título a 0.95 eso
+     hace que el resaltado de una línea se monte sobre la de arriba y le tape
+     las colas a las letras. Por eso cualquier título que lleve un .resaltado
+     necesita aire: de ahí la clase .titulo-resaltado.
+
+     box-decoration-break mantiene el relleno parejo cuando el texto envuelve
+     en más de una línea, en vez de cortarlo al medio. */
+  .resaltado {
+    background-color: var(--acento);
+    color: var(--color-tinta);
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  .titulo-resaltado {
+    line-height: 1.12;
+  }
+}
+
+/* ============================================================
+   Accesibilidad de movimiento.
+   El swipe sigue funcionando: es un gesto, no una animación decorativa.
+   Lo que se apaga es la coreografía — rotación, overshoot, entradas.
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

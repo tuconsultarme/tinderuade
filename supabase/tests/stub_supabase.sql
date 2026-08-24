@@ -4,9 +4,21 @@
 create schema if not exists auth;
 create schema if not exists storage;
 
-create role anon;
-create role authenticated;
-create role service_role;
+-- Los roles son a nivel de cluster, no de base: si se crean a secas, la suite
+-- solo se puede correr una vez por instalación de Postgres y a la segunda
+-- aborta con "role already exists".
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then
+    create role anon;
+  end if;
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then
+    create role authenticated;
+  end if;
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then
+    create role service_role;
+  end if;
+end $$;
 
 create table auth.users (
   id uuid primary key default gen_random_uuid(),

@@ -15,7 +15,12 @@
    | 2 | `migrations/0002_funciones.sql` | Triggers de validación, creación automática de match, función del feed |
    | 3 | `migrations/0003_rls.sql` | Row Level Security en todas las tablas + Realtime del chat |
    | 4 | `migrations/0004_storage.sql` | Bucket privado de fotos y sus políticas |
-   | 5 | `seed.sql` | Sedes y carreras de UADE |
+   | 5 | `migrations/0005_reordenar_fotos.sql` | Función para reordenar el carrusel de fotos |
+   | 6 | `seed.sql` | Sedes y carreras de UADE |
+
+   > **Si la base ya estaba creada antes del front:** falta solo la `0005`.
+   > Pegá ese archivo en el SQL Editor. Sin ella, "hacer principal" y borrar
+   > fotos del perfil fallan; el resto de la app anda igual.
 
 3. En **Project Settings → API**, copiar y guardar:
    - Project URL
@@ -31,11 +36,17 @@
 
 ## Tests
 
-El schema está validado contra PostgreSQL 16 local, con stubs que imitan lo que
-aporta Supabase (`auth.uid()`, `auth.users`, `storage.objects`, la publicación
-de Realtime). Cubren mayoría de edad, creación de match recíproco, separación
-por intención, swipes duplicados, filtro de género mutuo, bloqueo bidireccional
-y cinco casos de RLS.
+21 tests contra PostgreSQL 16 local, con stubs que imitan lo que aporta Supabase
+(`auth.uid()`, `auth.users`, `storage.objects`, la publicación de Realtime).
+
+- `tests/test_logica.sql` (15): mayoría de edad, creación de match recíproco,
+  separación por intención, swipes duplicados, filtro de género mutuo, bloqueo
+  bidireccional y cinco casos de RLS.
+- `tests/test_fotos.sql` (6): reordenamiento del carrusel, rechazo de fotos
+  ajenas, rechazo de subconjuntos y tope de 6 fotos.
+
+Se corren sobre `schema_completo.sql`, así que además verifican que el archivo
+que se pega en el SQL Editor esté bien armado.
 
 ```bash
 brew install postgresql@16
@@ -49,15 +60,17 @@ pg_ctl -D /tmp/uadepg -o "-p 55433 -c unix_socket_directories= -c listen_address
 psql -h 127.0.0.1 -p 55433 -U postgres -c "create database uadetest;"
 psql -h 127.0.0.1 -p 55433 -U postgres -d uadetest -v ON_ERROR_STOP=1 \
   -f tests/stub_supabase.sql \
-  -f migrations/0001_schema_inicial.sql \
-  -f migrations/0002_funciones.sql \
-  -f migrations/0003_rls.sql \
-  -f migrations/0004_storage.sql \
-  -f seed.sql \
-  -f tests/test_logica.sql
+  -f schema_completo.sql
+psql -h 127.0.0.1 -p 55433 -U postgres -d uadetest \
+  -f tests/test_logica.sql \
+  -f tests/test_fotos.sql
 
 pg_ctl -D /tmp/uadepg stop
 ```
+
+Los `\echo` van comparados a ojo contra el "esperado" de cada caso; los que
+validan un rechazo imprimen `OK:` o `FALLO:`. No debería aparecer ningún
+`ERROR` en la salida.
 
 Los stubs son solo para el test: en Supabase esos objetos ya existen y no hay
 que crearlos.
