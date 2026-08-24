@@ -8,15 +8,52 @@ const SEDES_DEMO: Sede[] = [
   { id: 2, nombre: 'Belgrano' },
 ]
 
+// Mismo listado que supabase/seed.sql, para que el combo de Carrera se vea
+// igual en demo que contra la base real.
 const CARRERAS_DEMO: Carrera[] = [
-  { id: 1, nombre: 'Abogacía', facultad: 'Ciencias Jurídicas y Sociales' },
-  { id: 2, nombre: 'Licenciatura en Administración de Empresas', facultad: 'Ciencias Económicas' },
-  { id: 3, nombre: 'Licenciatura en Comunicación Audiovisual', facultad: 'Comunicación' },
-  { id: 4, nombre: 'Contador Público', facultad: 'Ciencias Económicas' },
-  { id: 5, nombre: 'Diseño Multimedial', facultad: 'Diseño' },
-  { id: 6, nombre: 'Ingeniería en Informática', facultad: 'Ingeniería y Ciencias Exactas' },
-  { id: 7, nombre: 'Ingeniería Industrial', facultad: 'Ingeniería y Ciencias Exactas' },
-  { id: 8, nombre: 'Licenciatura en Psicología', facultad: 'Ciencias Jurídicas y Sociales' },
+  { id: 1, nombre: 'Ingeniería en Informática', facultad: 'Ingeniería y Ciencias Exactas' },
+  { id: 2, nombre: 'Ingeniería Industrial', facultad: 'Ingeniería y Ciencias Exactas' },
+  { id: 3, nombre: 'Ingeniería Electrónica', facultad: 'Ingeniería y Ciencias Exactas' },
+  { id: 4, nombre: 'Ingeniería en Telecomunicaciones', facultad: 'Ingeniería y Ciencias Exactas' },
+  { id: 5, nombre: 'Ingeniería en Alimentos', facultad: 'Ingeniería y Ciencias Exactas' },
+  {
+    id: 6,
+    nombre: 'Licenciatura en Gestión de Tecnología de la Información',
+    facultad: 'Ingeniería y Ciencias Exactas',
+  },
+  { id: 7, nombre: 'Licenciatura en Ciencia de Datos', facultad: 'Ingeniería y Ciencias Exactas' },
+
+  { id: 8, nombre: 'Contador Público', facultad: 'Ciencias Económicas' },
+  { id: 9, nombre: 'Licenciatura en Administración de Empresas', facultad: 'Ciencias Económicas' },
+  { id: 10, nombre: 'Licenciatura en Comercio Internacional', facultad: 'Ciencias Económicas' },
+  { id: 11, nombre: 'Licenciatura en Dirección de Negocios Globales (GBM)', facultad: 'Ciencias Económicas' },
+  { id: 12, nombre: 'Licenciatura en Dirección en Finanzas Globales (GFM)', facultad: 'Ciencias Económicas' },
+  { id: 13, nombre: 'Licenciatura en Economía', facultad: 'Ciencias Económicas' },
+  { id: 14, nombre: 'Licenciatura en Finanzas', facultad: 'Ciencias Económicas' },
+  { id: 15, nombre: 'Licenciatura en Finanzas Digitales', facultad: 'Ciencias Económicas' },
+  { id: 16, nombre: 'Licenciatura en Marketing', facultad: 'Ciencias Económicas' },
+  { id: 17, nombre: 'Licenciatura en Negocios Digitales', facultad: 'Ciencias Económicas' },
+  { id: 18, nombre: 'Licenciatura en Recursos Humanos', facultad: 'Ciencias Económicas' },
+  {
+    id: 19,
+    nombre: 'Tecnicatura Universitaria en Comercio Electrónico e Innovación Digital',
+    facultad: 'Ciencias Económicas',
+  },
+  { id: 20, nombre: 'Tecnicatura Universitaria en Finanzas Digitales', facultad: 'Ciencias Económicas' },
+
+  { id: 21, nombre: 'Abogacía', facultad: 'Ciencias Jurídicas y Sociales' },
+  { id: 22, nombre: 'Licenciatura en Relaciones Internacionales', facultad: 'Ciencias Jurídicas y Sociales' },
+  { id: 23, nombre: 'Licenciatura en Psicología', facultad: 'Ciencias Jurídicas y Sociales' },
+
+  { id: 24, nombre: 'Diseño Gráfico', facultad: 'Diseño' },
+  { id: 25, nombre: 'Diseño Industrial', facultad: 'Diseño' },
+  { id: 26, nombre: 'Diseño de Indumentaria y Textil', facultad: 'Diseño' },
+  { id: 27, nombre: 'Diseño Multimedial', facultad: 'Diseño' },
+
+  { id: 28, nombre: 'Licenciatura en Publicidad', facultad: 'Comunicación' },
+  { id: 29, nombre: 'Licenciatura en Comunicación Audiovisual', facultad: 'Comunicación' },
+
+  { id: 30, nombre: 'Arquitectura', facultad: 'Arquitectura y Urbanismo' },
 ]
 
 /**
