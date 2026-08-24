@@ -23,15 +23,22 @@ insert into carreras (nombre, facultad) values
   ('Licenciatura en Gestión de Tecnología de la Información', 'Ingeniería y Ciencias Exactas'),
   ('Licenciatura en Ciencia de Datos', 'Ingeniería y Ciencias Exactas'),
 
-  -- Ciencias Económicas
+  -- Ciencias Económicas (verificado contra uade.edu.ar/facultad-de-ciencias-economicas
+  -- el 2026-08-24; se dejan afuera las variantes por sede, las dobles
+  -- titulaciones y las diplomaturas cortas)
   ('Contador Público', 'Ciencias Económicas'),
   ('Licenciatura en Administración de Empresas', 'Ciencias Económicas'),
-  ('Licenciatura en Marketing', 'Ciencias Económicas'),
   ('Licenciatura en Comercio Internacional', 'Ciencias Económicas'),
+  ('Licenciatura en Dirección de Negocios Globales (GBM)', 'Ciencias Económicas'),
+  ('Licenciatura en Dirección en Finanzas Globales (GFM)', 'Ciencias Económicas'),
   ('Licenciatura en Economía', 'Ciencias Económicas'),
   ('Licenciatura en Finanzas', 'Ciencias Económicas'),
-  ('Licenciatura en Recursos Humanos', 'Ciencias Económicas'),
+  ('Licenciatura en Finanzas Digitales', 'Ciencias Económicas'),
+  ('Licenciatura en Marketing', 'Ciencias Económicas'),
   ('Licenciatura en Negocios Digitales', 'Ciencias Económicas'),
+  ('Licenciatura en Recursos Humanos', 'Ciencias Económicas'),
+  ('Tecnicatura Universitaria en Comercio Electrónico e Innovación Digital', 'Ciencias Económicas'),
+  ('Tecnicatura Universitaria en Finanzas Digitales', 'Ciencias Económicas'),
 
   -- Ciencias Jurídicas y Sociales
   ('Abogacía', 'Ciencias Jurídicas y Sociales'),

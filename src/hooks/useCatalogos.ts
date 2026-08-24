@@ -10,7 +10,7 @@ const SEDES_DEMO: Sede[] = [
 
 const CARRERAS_DEMO: Carrera[] = [
   { id: 1, nombre: 'Abogacía', facultad: 'Ciencias Jurídicas y Sociales' },
-  { id: 2, nombre: 'Administración de Empresas', facultad: 'Ciencias Económicas' },
+  { id: 2, nombre: 'Licenciatura en Administración de Empresas', facultad: 'Ciencias Económicas' },
   { id: 3, nombre: 'Licenciatura en Comunicación Audiovisual', facultad: 'Comunicación' },
   { id: 4, nombre: 'Contador Público', facultad: 'Ciencias Económicas' },
   { id: 5, nombre: 'Diseño Multimedial', facultad: 'Diseño' },
