@@ -931,6 +931,26 @@ create policy "borrar fotos de chat propias" on storage.objects
   );
 
 -- ############################################################
+-- ### migrations/0009_bloqueados_con_nombre.sql
+-- ############################################################
+
+create or replace function mis_bloqueados()
+returns table (id uuid, nombre text, bloqueado_at timestamptz)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select p.id, p.nombre, b.created_at
+  from bloqueos b
+  join profiles p on p.id = b.bloqueado_id
+  where b.bloqueador_id = auth.uid()
+  order by b.created_at desc
+$$;
+
+grant execute on function mis_bloqueados() to authenticated;
+
+-- ############################################################
 -- ### seed.sql
 -- ############################################################
 
