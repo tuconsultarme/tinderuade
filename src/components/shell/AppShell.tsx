@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { TabBar } from './TabBar'
 import { MenuHamburguesa } from '@/components/MenuHamburguesa'
+import { AlternadorTema } from '@/components/AlternadorTema'
 
 interface Props {
   children: ReactNode
@@ -22,8 +24,19 @@ export function AppShell({ children, sinLeer = 0, scroll = true }: Props) {
   return (
     <div className="h-[100dvh] w-full flex justify-center bg-papel">
       <div className="relative w-full max-w-[480px] h-full flex flex-col border-x border-lapiz">
-        <header className="shrink-0 flex items-center justify-end px-3 pt-2 pb-1">
-          <MenuHamburguesa />
+        <header className="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 pt-2 pb-1">
+          <span aria-hidden="true" />
+          <Link
+            to="/mazo"
+            aria-label="Ir al inicio"
+            className="justify-self-center text-base font-extrabold resaltado px-1.5"
+          >
+            UADencuentros
+          </Link>
+          <div className="justify-self-end flex items-center gap-2">
+            <AlternadorTema />
+            <MenuHamburguesa />
+          </div>
         </header>
         <main
           className={[
