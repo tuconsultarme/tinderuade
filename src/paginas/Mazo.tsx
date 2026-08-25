@@ -122,7 +122,7 @@ export function Mazo() {
               aria-hidden="true"
               className="absolute inset-0 scale-[0.96] origin-bottom opacity-70 pointer-events-none"
             >
-              <div className="absolute inset-0 bg-papel rounded-card sombra-card" />
+              <div className="absolute inset-0 bg-papel border border-lapiz rounded-card sombra-card" />
             </div>
           )}
 
@@ -139,13 +139,17 @@ export function Mazo() {
           )}
         </div>
 
-        <Acciones
-          deshabilitado={!arriba || Boolean(match)}
-          etiquetaLike={def.like}
-          onPass={() => resolverConBoton('pass')}
-          onLike={() => resolverConBoton('like')}
-          onDeshacer={hayParaDeshacer && !match ? () => void deshacer() : undefined}
-        />
+        {/* Sin card arriba (mazo vacío o cargando) no hay nada que resolver:
+            los botones desaparecen y queda solo el mensaje de "nadie más". */}
+        {arriba && (
+          <Acciones
+            deshabilitado={Boolean(match)}
+            etiquetaLike={def.like}
+            onPass={() => resolverConBoton('pass')}
+            onLike={() => resolverConBoton('like')}
+            onDeshacer={hayParaDeshacer && !match ? () => void deshacer() : undefined}
+          />
+        )}
       </section>
 
       {match && (

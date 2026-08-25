@@ -7,13 +7,14 @@
    ============================================================ */
 
 @theme {
-  --color-papel: #ffffff;
-  --color-tinta: #1a1a1c;
-  --color-grafito: #8e8e93;
-  --color-lapiz: #ececec;
+  /* Fondo oscuro siempre (estilo dark mode de Tinder). */
+  --color-papel: #000000;
+  --color-tinta: #f5f5f7;
+  --color-grafito: #9a9aa2;
+  --color-lapiz: #2a2a2e;
 
-  /* Fijos que NO se invierten con el modo oscuro (texto sobre gradiente o
-     sobre una foto real, que tampoco se invierte). */
+  /* Fijos que NO cambian con el fondo: texto sobre gradiente o sobre una foto
+     real (que tampoco se aclara). */
   --color-tinta-fija: #1a1a1c;
   --color-papel-fija: #ffffff;
 
@@ -46,16 +47,16 @@
 }
 
 /* ============================================================
-   Modo oscuro — sigue la preferencia del sistema.
+   Tema claro — se activa con el interruptor sol/luna (data-tema en <html>).
+   El oscuro es el default (los tokens de @theme). Acá solo se sobrescriben
+   los que cambian con el fondo; los *-fija se quedan igual.
    ============================================================ */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-papel: #000000;
-    --color-tinta: #f5f5f7;
-    --color-grafito: #98989f;
-    --color-lapiz: #26262a;
-  }
+html[data-tema='light'] {
+  --color-papel: #ffffff;
+  --color-tinta: #1a1a1c;
+  --color-grafito: #8e8e93;
+  --color-lapiz: #ececec;
 }
 
 /* ============================================================

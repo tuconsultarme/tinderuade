@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { DOMINIO_MAIL_REQUERIDO } from '@/lib/config'
 import { ShellPlano } from '@/components/shell/AppShell'
+import { AlternadorTema } from '@/components/AlternadorTema'
 import { CampoTexto } from '@/components/ui/Campo'
 import { Boton } from '@/components/ui/Boton'
 import { Aviso } from '@/components/ui/Estados'
@@ -62,7 +63,10 @@ export function Entrada() {
 
   return (
     <ShellPlano>
-      <div className="flex-1 flex flex-col justify-center px-6 py-10 gap-8">
+      <div className="flex justify-end px-3 pt-2">
+        <AlternadorTema />
+      </div>
+      <div className="flex-1 flex flex-col justify-center px-6 pb-10 gap-8">
         <div>
           <div className="flex items-center gap-2 mb-4">
             <span className="grid place-items-center w-11 h-11 rounded-2xl gradiente sombra-boton">

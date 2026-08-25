@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { TabBar } from './TabBar'
+import { MenuHamburguesa } from '@/components/MenuHamburguesa'
 
 interface Props {
   children: ReactNode
@@ -20,7 +21,10 @@ interface Props {
 export function AppShell({ children, sinLeer = 0, scroll = true }: Props) {
   return (
     <div className="h-[100dvh] w-full flex justify-center bg-papel">
-      <div className="w-full max-w-[480px] h-full flex flex-col border-x border-lapiz">
+      <div className="relative w-full max-w-[480px] h-full flex flex-col border-x border-lapiz">
+        <header className="shrink-0 flex items-center justify-end px-3 pt-2 pb-1">
+          <MenuHamburguesa />
+        </header>
         <main
           className={[
             'flex-1 min-h-0',

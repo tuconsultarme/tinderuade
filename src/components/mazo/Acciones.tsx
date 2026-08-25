@@ -22,33 +22,38 @@ export function Acciones({
   onDeshacer,
 }: Props) {
   return (
-    <div className="shrink-0 flex items-center justify-center gap-4 py-4">
-      <BotonAccion
-        onClick={onDeshacer ?? (() => {})}
-        etiqueta="Deshacer el último swipe"
-        color="var(--color-rewind)"
-        tam="chico"
-        oculto={!onDeshacer}
-      >
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <path
-            d="M7 10H3V6"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M3.5 14a9 9 0 1 0 2.2-8.8L3 10"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </BotonAccion>
+    <div className="relative shrink-0 flex items-center justify-center gap-6 py-4">
+      {/* Deshacer va absoluto a la izquierda: así la cruz y el corazón quedan
+          siempre centrados, aparezca o no el botón de deshacer. */}
+      {onDeshacer && (
+        <div className="absolute left-6 top-1/2 -translate-y-1/2">
+          <BotonAccion
+            onClick={onDeshacer}
+            etiqueta="Deshacer el último swipe"
+            color="var(--color-rewind)"
+            tam="chico"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path
+                d="M7 10H3V6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M3.5 14a9 9 0 1 0 2.2-8.8L3 10"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </BotonAccion>
+        </div>
+      )}
 
       <BotonAccion
         onClick={onPass}
@@ -95,7 +100,6 @@ interface BotonAccionProps {
   color: string
   tam: 'chico' | 'grande'
   deshabilitado?: boolean
-  oculto?: boolean
   children: React.ReactNode
 }
 
@@ -105,7 +109,6 @@ function BotonAccion({
   color,
   tam,
   deshabilitado = false,
-  oculto = false,
   children,
 }: BotonAccionProps) {
   const medida = tam === 'grande' ? 'w-16 h-16' : 'w-12 h-12'
@@ -121,7 +124,6 @@ function BotonAccion({
         'grid place-items-center rounded-full border-2 bg-papel sombra-boton',
         'transition-transform duration-150 active:scale-90',
         'disabled:opacity-30 disabled:pointer-events-none',
-        oculto ? 'invisible pointer-events-none' : '',
       ].join(' ')}
     >
       {children}
