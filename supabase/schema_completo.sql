@@ -876,35 +876,59 @@ create policy "deshacer swipe propio" on swipes
 -- ### migrations/0008_chat_rico.sql
 -- ############################################################
 
--- Mensajes: imagen y respuesta (cita estilo WhatsApp).
+-- UADencuentros — chat con imágenes y respuestas
+-- Ejecutar después de 0007.
+
+-- ============================================================
+-- 1. Mensajes: imagen y respuesta (cita estilo WhatsApp)
+-- ============================================================
+
+-- El contenido deja de ser obligatorio: un mensaje puede ser solo una foto.
 alter table mensajes alter column contenido drop not null;
 
+-- El check inline original (contenido entre 1 y 2000) se llamaba
+-- mensajes_contenido_check. Se reemplaza por uno que tolera el null.
 alter table mensajes drop constraint if exists mensajes_contenido_check;
 alter table mensajes drop constraint if exists mensajes_contenido_len;
 alter table mensajes
   add constraint mensajes_contenido_len
   check (contenido is null or char_length(contenido) between 1 and 2000);
 
+-- Path de la imagen en el bucket privado fotos-chat (null si es solo texto).
 alter table mensajes add column if not exists imagen_path text;
 
+-- A qué mensaje responde. Si el citado se borra, la respuesta queda sin cita.
 alter table mensajes add column if not exists responde_a bigint
   references mensajes (id) on delete set null;
 
+-- Un mensaje tiene que tener texto o imagen (o las dos), nunca vacío.
 alter table mensajes drop constraint if exists mensajes_tiene_contenido;
 alter table mensajes
   add constraint mensajes_tiene_contenido
   check (contenido is not null or imagen_path is not null);
 
--- Bucket privado de fotos de chat: solo los participantes del match suben y ven.
+-- Las políticas de insert/select de 0003 siguen valiendo: las columnas nuevas
+-- viajan en el mismo insert del emisor, y el grant de update sigue acotado a
+-- leido_at, así que nadie puede reescribir la imagen ni la cita de otro.
+
+-- ============================================================
+-- 2. Bucket privado de fotos de chat
+-- ============================================================
+
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'fotos-chat',
   'fotos-chat',
   false,
-  5242880,
+  5242880, -- 5 MB
   array['image/jpeg', 'image/png', 'image/webp']
 )
 on conflict (id) do nothing;
+
+-- Convención de path: {match_id}/{uuid}.webp
+-- La primera carpeta es el match, y solo sus participantes pueden subir o ver.
+-- Más cerrado que las fotos de perfil (que las ve cualquier logueado): una foto
+-- mandada en un chat es privada de esa conversación.
 
 drop policy if exists "subir fotos de chat" on storage.objects;
 create policy "subir fotos de chat" on storage.objects
@@ -934,6 +958,14 @@ create policy "borrar fotos de chat propias" on storage.objects
 -- ### migrations/0009_bloqueados_con_nombre.sql
 -- ############################################################
 
+-- UADencuentros — listar los perfiles bloqueados con su nombre
+-- Ejecutar después de 0008.
+
+-- La política "perfiles visibles" (0003) oculta con hay_bloqueo() a cualquiera
+-- que uno haya bloqueado, así que desde el cliente no se puede leer el nombre
+-- de un bloqueado. Esta función corre como security definer para poder unir con
+-- profiles igual, pero solo devuelve los bloqueos del propio usuario: nunca
+-- expone datos de terceros.
 create or replace function mis_bloqueados()
 returns table (id uuid, nombre text, bloqueado_at timestamptz)
 language sql
@@ -954,6 +986,14 @@ grant execute on function mis_bloqueados() to authenticated;
 -- ### migrations/0010_likes_recibidos.sql
 -- ############################################################
 
+-- UADencuentros — ver los likes recibidos (para devolver o rechazar)
+-- Ejecutar después de 0009.
+
+-- La RLS de swipes solo deja ver los propios (emisor = auth.uid()), así que
+-- desde el cliente no se puede saber quién te dio like. Esta función lo
+-- resuelve como security definer, pero solo devuelve los likes dirigidos al
+-- propio usuario que todavía no respondió (ni like ni pass en esa intención):
+-- nunca expone likes de terceros entre sí.
 create or replace function mis_likes_recibidos()
 returns table (emisor_id uuid, nombre text, intencion intencion, recibido_at timestamptz)
 language sql
@@ -976,6 +1016,51 @@ as $$
 $$;
 
 grant execute on function mis_likes_recibidos() to authenticated;
+
+-- ############################################################
+-- ### migrations/0011_arreglar_enum_intencion.sql
+-- ############################################################
+
+-- UADencuentros — restaura el enum intencion (citas/amistad/estudio)
+-- Ejecutar después de 0010.
+--
+-- En algún momento se editó el tipo `intencion` a mano desde el dashboard de
+-- Supabase (Database → Enumerated Types) en vez de por migración: quedó con
+-- los valores `match` y `estudio` en vez de `citas`, `amistad` y `estudio`.
+-- Probablemente un rename de "citas" a "match" pensando en el look estilo
+-- Tinder, que de paso se llevó puesto "amistad".
+--
+-- Resultado: el mazo en modo citas/amistad no cargaba ("invalid input value
+-- for enum intencion"), y los swipes/matches/intenciones de perfil que
+-- deberían decir "citas" o "amistad" quedaron con la etiqueta ambigua
+-- "match" — no hay forma de saber cuál era cuál.
+--
+-- Como todo lo que hay cargado hasta ahora son perfiles y swipes de prueba
+-- (el seed de scripts/seed-demo.mjs y pruebas manuales, nada de gente real
+-- todavía), se limpia esa data ambigua en vez de adivinar, y se puede volver
+-- a correr el seed después. La etiqueta "match" queda en el tipo sin uso: no
+-- vale la pena el riesgo de recrear el tipo (y con él las funciones que lo
+-- referencian) solo para sacarla, ya que el front nunca la va a volver a
+-- generar.
+
+-- 1. Restaurar los valores que faltan. ADD VALUE es aditivo: no toca las
+--    filas existentes.
+alter type intencion add value if not exists 'citas';
+alter type intencion add value if not exists 'amistad';
+
+-- 2. Limpiar la data ambigua. Comparar como texto (intencion::text) y no
+--    contra el literal 'match' directo: en una base nueva (o ya arreglada)
+--    'match' nunca fue ni va a ser un valor válido del enum, así que
+--    Postgres rechazaría el literal antes de llegar a evaluar el WHERE.
+--    Como texto, si no hay ninguna fila así, el DELETE no borra nada y no
+--    rompe nada — que es exactamente lo que tiene que pasar en una base sana.
+--
+--    `matches` se borra antes que `swipes` nomás por orden de lectura: no hay
+--    FK entre ellas que lo exija, y el `on delete cascade` de
+--    mensajes(match_id) se encarga de los mensajes de esos matches solo.
+delete from matches where intencion::text = 'match';
+delete from swipes where intencion::text = 'match';
+delete from profile_intenciones where intencion::text = 'match';
 
 -- ############################################################
 -- ### seed.sql

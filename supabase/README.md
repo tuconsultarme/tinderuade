@@ -18,15 +18,23 @@
    | 5 | `migrations/0005_reordenar_fotos.sql` | Función para reordenar el carrusel de fotos |
    | 6 | `migrations/0006_visibilidad_fotos_bloqueos.sql` | Cierra un bypass: fotos, intenciones y materias ahora respetan bloqueos y perfiles inactivos, igual que ya hacía `profiles` |
    | 7 | `migrations/0007_deshacer_swipe.sql` | Permite borrar el propio swipe, para el botón de "deshacer" del mazo |
-   | 8 | `seed.sql` | Sedes y carreras de UADE |
+   | 8 | `migrations/0008_chat_rico.sql` | Fotos y respuestas citadas en el chat, bucket privado `fotos-chat` |
+   | 9 | `migrations/0009_bloqueados_con_nombre.sql` | Función para listar los propios bloqueados con nombre |
+   | 10 | `migrations/0010_likes_recibidos.sql` | Función para ver quién te dio like y todavía no respondiste |
+   | 11 | `migrations/0011_arreglar_enum_intencion.sql` | Restaura el enum `intencion` (`citas`/`amistad`/`estudio`) si quedó editado a mano desde el dashboard, y limpia la data ambigua que eso deja |
+   | 12 | `seed.sql` | Sedes y carreras de UADE |
 
-   > **Si la base ya estaba creada antes del front:** faltan la `0005`, la
-   > `0006` y la `0007`. Pegá esos tres archivos en el SQL Editor, en ese
-   > orden. Sin la `0005`, "hacer principal" y borrar fotos del perfil fallan.
-   > Sin la `0006`, alguien que te bloqueó puede seguir viendo tus fotos
-   > pidiéndolas por API directo, aunque en la app no te aparezca más. Sin la
-   > `0007`, el botón de "deshacer" del mazo tira error porque la base no
-   > deja borrar swipes. El resto anda igual sin ninguna de las tres.
+   > **Si la base ya estaba creada antes del front:** faltan la `0005` en
+   > adelante. Pegá esos archivos en el SQL Editor, en orden. Sin la `0005`,
+   > "hacer principal" y borrar fotos del perfil fallan. Sin la `0006`,
+   > alguien que te bloqueó puede seguir viendo tus fotos pidiéndolas por API
+   > directo. Sin la `0007`, el botón de "deshacer" del mazo tira error. Sin
+   > la `0008`, el chat no acepta fotos ni respuestas citadas. Sin la `0009`
+   > y la `0010`, "Perfiles bloqueados" y "Matches recibidos" no muestran
+   > nombres o tiran error. La `0011` solo hace falta si en algún momento se
+   > tocó el tipo `intencion` a mano desde el dashboard en vez de por
+   > migración (pasó una vez, ver el comentario del archivo) — correrla de
+   > más no rompe nada, es segura de ejecutar aunque el enum esté sano.
 
 3. En **Project Settings → API**, copiar y guardar:
    - Project URL
