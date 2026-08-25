@@ -24,12 +24,12 @@ export function AppShell({ children, sinLeer = 0, scroll = true }: Props) {
   return (
     <div className="h-[100dvh] w-full flex justify-center bg-papel">
       <div className="relative w-full max-w-[480px] h-full flex flex-col border-x border-lapiz">
-        <header className="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 pt-2 pb-1">
+        <header className="shrink-0 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 pt-2.5 pb-1.5">
           <span aria-hidden="true" />
           <Link
             to="/mazo"
             aria-label="Ir al inicio"
-            className="justify-self-center text-base font-extrabold resaltado px-1.5"
+            className="justify-self-center text-2xl font-extrabold resaltado px-2 leading-none"
           >
             UADencuentros
           </Link>
