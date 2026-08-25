@@ -21,8 +21,15 @@ interface Cabecera {
   intencion: Intencion
 }
 
-/** Columnas que se piden de mensajes, incluidas las de chat rico. */
-const COLS = 'id, match_id, emisor_id, contenido, imagen_path, responde_a, leido_at, created_at'
+/**
+ * Dos juegos de columnas: el "base" existe siempre; el "rico" agrega imagen y
+ * respuesta y solo existe si se aplicó la migración 0008. El chat detecta cuál
+ * usar, así los mensajes de texto andan aunque la base todavía no esté al día.
+ */
+const COLS_BASE = 'id, match_id, emisor_id, contenido, leido_at, created_at'
+const COLS_RICO = 'id, match_id, emisor_id, contenido, imagen_path, responde_a, leido_at, created_at'
+/** Postgres: "columna no existe". Es la señal de que falta la migración 0008. */
+const SIN_COLUMNA = '42703'
 
 const EMOJIS = [
   '😀', '😂', '🥹', '😍', '😎', '😭', '😅', '😉', '😘', '🥰',
@@ -51,6 +58,9 @@ export function Chat() {
   const [mostrarEmojis, setMostrarEmojis] = useState(false)
   const [verImagen, setVerImagen] = useState<string | null>(null)
   const [subiendo, setSubiendo] = useState(false)
+  // ¿La base tiene las columnas de imagen/respuesta (migración 0008)? Se
+  // asume que sí y se baja a false si Postgres avisa que faltan.
+  const [rico, setRico] = useState(true)
 
   const finLista = useRef<HTMLDivElement>(null)
   const inputArchivo = useRef<HTMLInputElement>(null)
@@ -149,11 +159,20 @@ export function Chat() {
     let vigente = true
 
     ;(async () => {
-      const { data, error: err } = await supabase
-        .from('mensajes')
-        .select(COLS)
-        .eq('match_id', matchId)
-        .order('created_at', { ascending: true })
+      const traer = (cols: string) =>
+        supabase
+          .from('mensajes')
+          .select(cols)
+          .eq('match_id', matchId)
+          .order('created_at', { ascending: true })
+
+      let resp = await traer(COLS_RICO)
+      if (resp.error?.code === SIN_COLUMNA) {
+        // Falta la migración 0008: se sigue con las columnas base.
+        setRico(false)
+        resp = await traer(COLS_BASE)
+      }
+      const { data, error: err } = resp
 
       if (!vigente) return
       if (err) {
@@ -162,7 +181,7 @@ export function Chat() {
         return
       }
 
-      const lista = (data as Mensaje[]) ?? []
+      const lista = (data as unknown as Mensaje[]) ?? []
       setMensajes(lista)
       setCargando(false)
       void marcarLeidos(lista)
@@ -232,11 +251,16 @@ export function Chat() {
       return
     }
 
-    const { data, error: err } = await supabase
-      .from('mensajes')
-      .insert({ match_id: matchId, emisor_id: miId, contenido, responde_a: citado?.id ?? null })
-      .select(COLS)
-      .single()
+    const base = { match_id: matchId, emisor_id: miId, contenido }
+    const payload = rico && citado ? { ...base, responde_a: citado.id } : base
+
+    let resp = await supabase.from('mensajes').insert(payload).select(rico ? COLS_RICO : COLS_BASE).single()
+    // Si la base todavía no tiene las columnas nuevas, reintenta como texto plano.
+    if (resp.error?.code === SIN_COLUMNA) {
+      setRico(false)
+      resp = await supabase.from('mensajes').insert(base).select(COLS_BASE).single()
+    }
+    const { data, error: err } = resp
 
     setEnviando(false)
 
@@ -246,7 +270,7 @@ export function Chat() {
       setRespondiendoA(citado)
       return
     }
-    agregarMensaje(data as Mensaje)
+    agregarMensaje(data as unknown as Mensaje)
   }
 
   async function elegirImagen(e: React.ChangeEvent<HTMLInputElement>) {
@@ -259,6 +283,11 @@ export function Chat() {
       return
     }
 
+    if (!rico) {
+      setError('Para mandar fotos falta aplicar la migración 0008 en Supabase. Por ahora podés mandar texto.')
+      return
+    }
+
     const citado = respondiendoA
     setRespondiendoA(null)
     setMostrarEmojis(false)
@@ -267,14 +296,20 @@ export function Chat() {
 
     try {
       const path = await subirImagenChat(matchId, file)
+      const payload: Record<string, unknown> = {
+        match_id: matchId,
+        emisor_id: miId,
+        imagen_path: path,
+      }
+      if (citado) payload.responde_a = citado.id
       const { data, error: err } = await supabase
         .from('mensajes')
-        .insert({ match_id: matchId, emisor_id: miId, imagen_path: path, responde_a: citado?.id ?? null })
-        .select(COLS)
+        .insert(payload)
+        .select(COLS_RICO)
         .single()
 
       if (err) throw new Error(err.message)
-      const msg = data as Mensaje
+      const msg = data as unknown as Mensaje
       await firmarImagenes([msg])
       agregarMensaje(msg)
     } catch {
