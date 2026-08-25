@@ -8,6 +8,7 @@ import { GestorFotos } from '@/components/GestorFotos'
 import { CampoArea, CampoSelect, CampoTexto } from '@/components/ui/Campo'
 import { Boton } from '@/components/ui/Boton'
 import { Aviso, Cargando } from '@/components/ui/Estados'
+import { useToast } from '@/components/ui/Toast'
 import { INTENCIONES } from '@/lib/intenciones'
 import { FACULTADES } from '@/lib/facultades'
 import { MODO_DEMO } from '@/lib/demo'
@@ -30,6 +31,7 @@ function FormularioPerfil() {
   const datos = perfil!
   const { fotos, urls, cargando: cargandoFotos, refrescar } = useMisFotos(userId)
   const { carreras, sedes } = useCatalogos()
+  const { mostrar } = useToast()
 
   const [bio, setBio] = useState(datos.bio ?? '')
   const [facultad, setFacultad] = useState('')
@@ -42,7 +44,6 @@ function FormularioPerfil() {
 
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [ok, setOk] = useState(false)
 
   useEffect(() => {
     let vigente = true
@@ -68,7 +69,6 @@ function FormularioPerfil() {
 
   async function guardar() {
     setError(null)
-    setOk(false)
 
     const min = Number(edadMin)
     const max = Number(edadMax)
@@ -118,7 +118,7 @@ function FormularioPerfil() {
     }
 
     await refrescarPerfil()
-    setOk(true)
+    mostrar('Listo, guardado.')
   }
 
   return (
@@ -152,7 +152,9 @@ function FormularioPerfil() {
                 data-modo={i.id}
                 className={[
                   'px-3.5 py-2.5 rounded-chip border-2 cursor-pointer text-sm font-medium',
-                  activa ? 'border-tinta bg-[var(--acento)]' : 'border-lapiz text-grafito',
+                  activa
+                    ? 'border-tinta bg-[var(--acento)] text-tinta-fija'
+                    : 'border-lapiz text-grafito',
                 ].join(' ')}
               >
                 <input
@@ -249,8 +251,6 @@ function FormularioPerfil() {
       />
 
       {error && <Aviso>{error}</Aviso>}
-      {ok && <Aviso>Listo, guardado.</Aviso>}
-
       <Boton ancho onClick={() => void guardar()} disabled={guardando || MODO_DEMO}>
         {guardando ? 'Guardando…' : 'Guardar cambios'}
       </Boton>

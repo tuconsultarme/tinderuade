@@ -3,18 +3,54 @@ interface Props {
   onLike: () => void
   etiquetaLike: string
   deshabilitado?: boolean
+  /** Sin handler, el botón de deshacer ni aparece: no hay nada que deshacer. */
+  onDeshacer?: () => void
 }
 
 /**
- * Los dos botones bajo el mazo, para quien no quiere arrastrar (y para quien
+ * Los botones bajo el mazo, para quien no quiere arrastrar (y para quien
  * navega con teclado, que si no se queda sin forma de decidir).
  *
  * Sin verde ni rojo: el like usa el fluo del modo activo y el pass es una cruz
  * de tinta, igual que el feedback del arrastre.
  */
-export function Acciones({ onPass, onLike, etiquetaLike, deshabilitado = false }: Props) {
+export function Acciones({
+  onPass,
+  onLike,
+  etiquetaLike,
+  deshabilitado = false,
+  onDeshacer,
+}: Props) {
   return (
     <div className="shrink-0 flex items-center justify-center gap-6 py-3">
+      {onDeshacer && (
+        <button
+          type="button"
+          onClick={onDeshacer}
+          aria-label="Deshacer el último swipe"
+          className="w-11 h-11 grid place-items-center rounded-full border-2 border-lapiz text-grafito transition-transform duration-150 active:scale-90"
+        >
+          <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true">
+            <path
+              d="M7 10H3V6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M3.5 14a9 9 0 1 0 2.2-8.8L3 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      )}
+
       <button
         type="button"
         onClick={onPass}
@@ -38,7 +74,7 @@ export function Acciones({ onPass, onLike, etiquetaLike, deshabilitado = false }
         onClick={onLike}
         disabled={deshabilitado}
         aria-label={etiquetaLike}
-        className="w-20 h-20 grid place-items-center rounded-full border-2 border-tinta bg-[var(--acento)] text-tinta transition-transform duration-150 active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+        className="w-20 h-20 grid place-items-center rounded-full border-2 border-tinta bg-[var(--acento)] text-tinta-fija transition-transform duration-150 active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
       >
         {/* Un trazo de resaltador, no un corazón: el gesto de la app es marcar. */}
         <svg viewBox="0 0 32 32" width="34" height="34" aria-hidden="true">

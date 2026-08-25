@@ -2,15 +2,24 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { urlsFirmadas } from '@/lib/fotos'
 import { TAMANO_TANDA, UMBRAL_RECARGA } from '@/lib/config'
-import { MODO_DEMO, candidatosDemo, registrarLikeDemo } from '@/lib/demo'
+import { MODO_DEMO, candidatosDemo, registrarLikeDemo, deshacerLikeDemo } from '@/lib/demo'
 import type { Candidato, CandidatoConFotos, DireccionSwipe, Intencion } from '@/lib/tipos'
+
+interface UltimoSwipe {
+  candidato: CandidatoConFotos
+  direccion: DireccionSwipe
+  intencion: Intencion
+}
 
 interface Resultado {
   candidatos: CandidatoConFotos[]
   cargando: boolean
   error: string | null
   /** Registra el swipe y devuelve el id del match si se armó. */
-  swipear: (receptorId: string, direccion: DireccionSwipe) => Promise<string | null>
+  swipear: (candidato: CandidatoConFotos, direccion: DireccionSwipe) => Promise<string | null>
+  /** True si hay un swipe reciente para deshacer (nunca después de un match). */
+  hayParaDeshacer: boolean
+  deshacer: () => Promise<void>
   recargar: () => void
 }
 
@@ -24,6 +33,10 @@ export function useMazo(modo: Intencion): Resultado {
   const [candidatos, setCandidatos] = useState<CandidatoConFotos[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // El único swipe que se puede deshacer es el último, y solo si no armó
+  // match: desarmar un match ya mostrado es un caso raro que no vale la
+  // complejidad (¿se borra también el match? ¿y si ya escribieron?).
+  const [ultimoSwipe, setUltimoSwipe] = useState<UltimoSwipe | null>(null)
 
   // Evita que dos recargas se pisen y dupliquen candidatos en la lista.
   const trayendo = useRef(false)
@@ -108,18 +121,23 @@ export function useMazo(modo: Intencion): Resultado {
   // tanda nueva cuando llega.
   useEffect(() => {
     yaEnMazo.current = new Set()
+    setUltimoSwipe(null)
     void traer(true)
   }, [traer])
 
   const swipear = useCallback(
-    async (receptorId: string, direccion: DireccionSwipe): Promise<string | null> => {
+    async (candidato: CandidatoConFotos, direccion: DireccionSwipe): Promise<string | null> => {
+      const receptorId = candidato.id
+
       // Sale de la lista antes de que responda la red: el mazo tiene que
       // sentirse instantáneo. Si el insert falla se avisa, pero la card no
       // vuelve — get_candidatos la va a traer de nuevo en la próxima tanda.
       setCandidatos((prev) => prev.filter((c) => c.id !== receptorId))
 
       if (MODO_DEMO) {
-        return direccion === 'like' ? registrarLikeDemo(receptorId, modo) : null
+        const matchId = direccion === 'like' ? registrarLikeDemo(receptorId, modo) : null
+        setUltimoSwipe(matchId ? null : { candidato, direccion, intencion: modo })
+        return matchId
       }
 
       const { data: sesion } = await supabase.auth.getUser()
@@ -140,7 +158,10 @@ export function useMazo(modo: Intencion): Resultado {
         return null
       }
 
-      if (direccion !== 'like') return null
+      if (direccion !== 'like') {
+        setUltimoSwipe({ candidato, direccion, intencion: modo })
+        return null
+      }
 
       // El match lo crea el trigger `crear_match_si_reciproco`. Acá solo se
       // consulta si quedó armado, con el par ordenado igual que en la tabla.
@@ -154,10 +175,43 @@ export function useMazo(modo: Intencion): Resultado {
         .eq('activo', true)
         .maybeSingle()
 
+      setUltimoSwipe(match ? null : { candidato, direccion, intencion: modo })
       return match?.id ?? null
     },
     [modo],
   )
+
+  const deshacer = useCallback(async () => {
+    if (!ultimoSwipe) return
+    const { candidato, direccion, intencion } = ultimoSwipe
+    setUltimoSwipe(null)
+
+    if (MODO_DEMO) {
+      if (direccion === 'like') deshacerLikeDemo()
+      yaEnMazo.current.add(candidato.id)
+      setCandidatos((prev) => [candidato, ...prev])
+      return
+    }
+
+    const { data: sesion } = await supabase.auth.getUser()
+    const yo = sesion.user?.id
+    if (!yo) return
+
+    const { error: errBorrar } = await supabase
+      .from('swipes')
+      .delete()
+      .eq('emisor_id', yo)
+      .eq('receptor_id', candidato.id)
+      .eq('intencion', intencion)
+
+    if (errBorrar) {
+      setError(errBorrar.message)
+      return
+    }
+
+    yaEnMazo.current.add(candidato.id)
+    setCandidatos((prev) => [candidato, ...prev])
+  }, [ultimoSwipe])
 
   // Reponer cuando la pila se está por acabar.
   useEffect(() => {
@@ -171,6 +225,8 @@ export function useMazo(modo: Intencion): Resultado {
     cargando,
     error,
     swipear,
+    hayParaDeshacer: ultimoSwipe !== null,
+    deshacer,
     recargar: () => void traer(true),
   }
 }

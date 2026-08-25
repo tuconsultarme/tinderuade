@@ -268,6 +268,13 @@ export function registrarLikeDemo(otroId: string, intencion: Intencion): string 
   return id
 }
 
+/** Deshace el conteo de un "me gusta" para que la cuenta hacia el próximo
+ *  match demo quede como si nunca se hubiera dado. Solo se llama cuando ESE
+ *  like no armó un match (ver "deshacer" en useMazo.ts). */
+export function deshacerLikeDemo(): void {
+  likesDemo = Math.max(0, likesDemo - 1)
+}
+
 export function matchesConPerfilDemo(): MatchConPerfil[] {
   return matchesDemo.map((m) => {
     const otro = GENTE.find((g) => g.id === m.otroId)

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import type { ReactNode } from 'react'
 import { ProveedorSesion, useSesion } from './context/SesionContext'
 import { ProveedorModo } from './context/ModoContext'
+import { ProveedorToast } from './components/ui/Toast'
 import { AppShell } from './components/shell/AppShell'
 import { Cargando } from './components/ui/Estados'
 import { useMatches } from './hooks/useMatches'
@@ -146,11 +147,13 @@ function Rutas() {
 export default function App() {
   return (
     <BrowserRouter>
-      <ProveedorSesion>
-        <ProveedorModo>
-          <Rutas />
-        </ProveedorModo>
-      </ProveedorSesion>
+      <ProveedorToast>
+        <ProveedorSesion>
+          <ProveedorModo>
+            <Rutas />
+          </ProveedorModo>
+        </ProveedorSesion>
+      </ProveedorToast>
     </BrowserRouter>
   )
 }

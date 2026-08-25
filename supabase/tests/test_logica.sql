@@ -173,3 +173,34 @@ set role authenticated;
 select count(*) as fotos_de_ana_para_beto from fotos where profile_id = '11111111-1111-1111-1111-111111111111';
 reset role;
 \echo '--- (tiene que dar 1)'
+
+\echo ''
+\echo '=== TEST 17: RLS - se puede borrar el propio swipe (deshacer) pero no uno ajeno ==='
+\echo '--- Caro intenta borrar el swipe de Ana hacia Beto: no es suyo'
+set request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+set role authenticated;
+delete from swipes
+where emisor_id = '11111111-1111-1111-1111-111111111111'
+  and receptor_id = '22222222-2222-2222-2222-222222222222'
+  and intencion = 'citas';
+reset role;
+select count(*) as swipe_sigue_existiendo from swipes
+where emisor_id = '11111111-1111-1111-1111-111111111111'
+  and receptor_id = '22222222-2222-2222-2222-222222222222'
+  and intencion = 'citas';
+\echo '--- (tiene que dar 1: Caro no pudo tocar un swipe ajeno)'
+
+\echo ''
+\echo '--- Ana borra su propio swipe hacia Beto (deshacer de verdad) ---'
+set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+set role authenticated;
+delete from swipes
+where emisor_id = '11111111-1111-1111-1111-111111111111'
+  and receptor_id = '22222222-2222-2222-2222-222222222222'
+  and intencion = 'citas';
+reset role;
+select count(*) as swipe_borrado from swipes
+where emisor_id = '11111111-1111-1111-1111-111111111111'
+  and receptor_id = '22222222-2222-2222-2222-222222222222'
+  and intencion = 'citas';
+\echo '--- (tiene que dar 0: Ana si pudo borrar el suyo)'

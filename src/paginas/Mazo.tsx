@@ -25,7 +25,8 @@ interface MatchNuevo {
 
 export function Mazo() {
   const { modo, setModo } = useModo()
-  const { candidatos, cargando, error, swipear, recargar } = useMazo(modo)
+  const { candidatos, cargando, error, swipear, hayParaDeshacer, deshacer, recargar } =
+    useMazo(modo)
   const reducido = useMovimientoReducido()
   const navegar = useNavigate()
   const panelId = useId()
@@ -45,7 +46,7 @@ export function Mazo() {
   async function resolver(direccion: DireccionSwipe) {
     if (!arriba) return
     const candidato = arriba
-    const matchId = await swipear(candidato.id, direccion)
+    const matchId = await swipear(candidato, direccion)
     if (matchId) setMatch({ matchId, candidato, intencion: modo })
   }
 
@@ -143,6 +144,7 @@ export function Mazo() {
           etiquetaLike={def.like}
           onPass={() => resolverConBoton('pass')}
           onLike={() => resolverConBoton('like')}
+          onDeshacer={hayParaDeshacer && !match ? () => void deshacer() : undefined}
         />
       </section>
 
