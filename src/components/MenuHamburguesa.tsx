@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AlternadorTema } from './AlternadorTema'
 import { supabase } from '@/lib/supabase'
 import { useSesion } from '@/context/SesionContext'
@@ -75,6 +76,7 @@ export function MenuHamburguesa() {
   const [abierto, setAbierto] = useState(false)
   const [vista, setVista] = useState<Vista>('menu')
   const { salir, sesion } = useSesion()
+  const navegar = useNavigate()
   const miId = sesion?.user.id
 
   const [historial, setHistorial] = useState<MatchHist[] | null>(null)
@@ -287,6 +289,13 @@ export function MenuHamburguesa() {
               </div>
 
               <p className="dato text-grafito mt-5 mb-1">Tu actividad</p>
+              <ItemNav
+                etiqueta="Matches recibidos"
+                onClick={() => {
+                  cerrar()
+                  navegar('/recibidos')
+                }}
+              />
               <ItemNav etiqueta="Historial de matches" onClick={() => abrir('historial')} />
               <ItemNav etiqueta="Perfiles bloqueados" onClick={() => abrir('bloqueados')} />
 

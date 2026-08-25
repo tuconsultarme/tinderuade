@@ -951,6 +951,33 @@ $$;
 grant execute on function mis_bloqueados() to authenticated;
 
 -- ############################################################
+-- ### migrations/0010_likes_recibidos.sql
+-- ############################################################
+
+create or replace function mis_likes_recibidos()
+returns table (emisor_id uuid, nombre text, intencion intencion, recibido_at timestamptz)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select s.emisor_id, p.nombre, s.intencion, s.created_at
+  from swipes s
+  join profiles p on p.id = s.emisor_id
+  where s.receptor_id = auth.uid()
+    and s.direccion = 'like'
+    and not exists (
+      select 1 from swipes mio
+      where mio.emisor_id = auth.uid()
+        and mio.receptor_id = s.emisor_id
+        and mio.intencion = s.intencion
+    )
+  order by s.created_at desc
+$$;
+
+grant execute on function mis_likes_recibidos() to authenticated;
+
+-- ############################################################
 -- ### seed.sql
 -- ############################################################
 

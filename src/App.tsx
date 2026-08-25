@@ -11,6 +11,7 @@ import { Privacidad } from './paginas/Privacidad'
 import { Onboarding } from './paginas/Onboarding'
 import { Mazo } from './paginas/Mazo'
 import { Matches } from './paginas/Matches'
+import { MatchesRecibidos } from './paginas/MatchesRecibidos'
 import { Chat } from './paginas/Chat'
 import { MiPerfil } from './paginas/MiPerfil'
 import { PerfilDetalle } from './paginas/PerfilDetalle'
@@ -105,6 +106,17 @@ function Rutas() {
           <Privado>
             <ConTabs>
               <Matches />
+            </ConTabs>
+          </Privado>
+        }
+      />
+
+      <Route
+        path="/recibidos"
+        element={
+          <Privado>
+            <ConTabs>
+              <MatchesRecibidos />
             </ConTabs>
           </Privado>
         }
