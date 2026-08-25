@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
 import gsap from 'gsap'
-import { Boton } from './ui/Boton'
 import { useMovimientoReducido } from '@/hooks/useMovimientoReducido'
 import { definicion } from '@/lib/intenciones'
 import type { Intencion } from '@/lib/tipos'
@@ -59,41 +58,54 @@ export function MatchOverlay({ nombre, foto, intencion, onChatear, onSeguir }: P
       aria-modal="true"
       aria-labelledby="titulo-match"
       onKeyDown={alTeclado}
-      className="fixed inset-0 z-50 bg-papel flex flex-col items-center justify-center gap-6 px-8"
+      className="fixed inset-0 z-50 gradiente flex flex-col items-center justify-center gap-6 px-8"
     >
       <span
         data-anim="franja"
         aria-hidden="true"
-        className="absolute top-0 left-0 right-0 h-2 bg-[var(--acento)]"
+        className="absolute top-0 left-0 right-0 h-1.5 bg-papel-fija/40"
       />
 
-      <h2 id="titulo-match" data-anim="titulo" className="text-[clamp(3rem,18vw,5rem)] text-center">
-        ¡Match!
+      <h2
+        id="titulo-match"
+        data-anim="titulo"
+        className="text-[clamp(2.75rem,15vw,4.5rem)] text-center italic font-extrabold text-papel-fija"
+      >
+        ¡Es un match!
       </h2>
 
       <div
         data-anim="foto"
-        className="w-40 h-40 rounded-chip overflow-hidden border-2 border-tinta bg-lapiz/40 grid place-items-center"
+        className="w-40 h-40 rounded-full overflow-hidden border-4 border-papel-fija bg-papel-fija/20 grid place-items-center sombra-card"
       >
         {foto ? (
           <img src={foto} alt={`Foto de ${nombre}`} className="w-full h-full object-cover" />
         ) : (
-          <span className="dato text-grafito">Sin foto</span>
+          <span className="dato text-papel-fija/80">Sin foto</span>
         )}
       </div>
 
-      <p data-anim="nombre" className="text-center text-balance">
-        <span className="resaltado px-1.5 py-0.5 text-xl font-semibold">{nombre}</span>
-        <span className="block mt-2 text-grafito">{definicion(intencion).match}</span>
+      <p data-anim="nombre" className="text-center text-balance text-papel-fija">
+        <span className="text-xl font-bold">{nombre}</span>
+        <span className="block mt-2 text-papel-fija/85">{definicion(intencion).match}</span>
       </p>
 
-      <div data-anim="acciones" className="w-full max-w-xs flex flex-col gap-2.5">
-        <Boton ancho onClick={onChatear}>
+      <div data-anim="acciones" className="w-full max-w-xs flex flex-col gap-3">
+        <button
+          type="button"
+          onClick={onChatear}
+          className="min-h-13 px-6 rounded-full font-bold uppercase tracking-wide text-sm bg-papel-fija text-[var(--grad-1)] transition-transform duration-150 active:scale-[0.97]"
+        >
           Mandarle un mensaje
-        </Boton>
-        <Boton ref={cerrar} ancho variante="fantasma" onClick={onSeguir}>
+        </button>
+        <button
+          ref={cerrar}
+          type="button"
+          onClick={onSeguir}
+          className="min-h-13 px-6 rounded-full font-bold uppercase tracking-wide text-sm border-2 border-papel-fija/70 text-papel-fija transition-transform duration-150 active:scale-[0.97]"
+        >
           Seguir mirando
-        </Boton>
+        </button>
       </div>
     </div>
   )

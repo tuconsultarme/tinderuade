@@ -8,11 +8,11 @@ interface Props {
 }
 
 /**
- * Los botones bajo el mazo, para quien no quiere arrastrar (y para quien
- * navega con teclado, que si no se queda sin forma de decidir).
+ * Los botones bajo el mazo, estilo Tinder: círculos blancos con el ícono y el
+ * anillo pintados del color de cada acción, y una sombra suave que los levanta
+ * del fondo. Para quien no quiere arrastrar (y para quien navega con teclado).
  *
- * Sin verde ni rojo: el like usa el fluo del modo activo y el pass es una cruz
- * de tinta, igual que el feedback del arrastre.
+ * Deshacer (amarillo) · Pasar (rojo) · Me gusta (verde).
  */
 export function Acciones({
   onPass,
@@ -22,79 +22,109 @@ export function Acciones({
   onDeshacer,
 }: Props) {
   return (
-    <div className="shrink-0 flex items-center justify-center gap-6 py-3">
-      {onDeshacer && (
-        <button
-          type="button"
-          onClick={onDeshacer}
-          aria-label="Deshacer el último swipe"
-          className="w-11 h-11 grid place-items-center rounded-full border-2 border-lapiz text-grafito transition-transform duration-150 active:scale-90"
-        >
-          <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true">
-            <path
-              d="M7 10H3V6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M3.5 14a9 9 0 1 0 2.2-8.8L3 10"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-      )}
-
-      <button
-        type="button"
-        onClick={onPass}
-        disabled={deshabilitado}
-        aria-label="Pasar"
-        className="w-16 h-16 grid place-items-center rounded-full border-2 border-tinta bg-papel text-tinta transition-transform duration-150 active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+    <div className="shrink-0 flex items-center justify-center gap-4 py-4">
+      <BotonAccion
+        onClick={onDeshacer ?? (() => {})}
+        etiqueta="Deshacer el último swipe"
+        color="var(--color-rewind)"
+        tam="chico"
+        oculto={!onDeshacer}
       >
-        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path
+            d="M7 10H3V6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M3.5 14a9 9 0 1 0 2.2-8.8L3 10"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </BotonAccion>
+
+      <BotonAccion
+        onClick={onPass}
+        etiqueta="Pasar"
+        color="var(--color-nope)"
+        tam="grande"
+        deshabilitado={deshabilitado}
+      >
+        <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
           <path
             d="M6 6l12 12M18 6L6 18"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
+            strokeWidth="2.5"
             strokeLinecap="round"
           />
         </svg>
-      </button>
+      </BotonAccion>
 
-      <button
-        type="button"
+      <BotonAccion
         onClick={onLike}
-        disabled={deshabilitado}
-        aria-label={etiquetaLike}
-        className="w-20 h-20 grid place-items-center rounded-full border-2 border-tinta bg-[var(--acento)] text-tinta-fija transition-transform duration-150 active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+        etiqueta={etiquetaLike}
+        color="var(--color-like)"
+        tam="grande"
+        deshabilitado={deshabilitado}
       >
-        {/* Un trazo de resaltador, no un corazón: el gesto de la app es marcar. */}
-        <svg viewBox="0 0 32 32" width="34" height="34" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
           <path
-            d="M5 22.5 L27 7"
+            d="M12 20.5C6 16 3 12.5 3 9a4.5 4.5 0 0 1 9-1 4.5 4.5 0 0 1 9 1c0 3.5-3 7-9 11.5Z"
             fill="none"
             stroke="currentColor"
-            strokeWidth="6"
-            strokeLinecap="round"
-            opacity="0.28"
-          />
-          <path
-            d="M5 22.5 L27 7"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.25"
-            strokeLinecap="round"
+            strokeWidth="2"
+            strokeLinejoin="round"
           />
         </svg>
-      </button>
+      </BotonAccion>
     </div>
+  )
+}
+
+interface BotonAccionProps {
+  onClick: () => void
+  etiqueta: string
+  color: string
+  tam: 'chico' | 'grande'
+  deshabilitado?: boolean
+  oculto?: boolean
+  children: React.ReactNode
+}
+
+function BotonAccion({
+  onClick,
+  etiqueta,
+  color,
+  tam,
+  deshabilitado = false,
+  oculto = false,
+  children,
+}: BotonAccionProps) {
+  const medida = tam === 'grande' ? 'w-16 h-16' : 'w-12 h-12'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={deshabilitado}
+      aria-label={etiqueta}
+      style={{ color, borderColor: color }}
+      className={[
+        medida,
+        'grid place-items-center rounded-full border-2 bg-papel sombra-boton',
+        'transition-transform duration-150 active:scale-90',
+        'disabled:opacity-30 disabled:pointer-events-none',
+        oculto ? 'invisible pointer-events-none' : '',
+      ].join(' ')}
+    >
+      {children}
+    </button>
   )
 }

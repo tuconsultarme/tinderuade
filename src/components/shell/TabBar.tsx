@@ -62,7 +62,7 @@ export function TabBar({ sinLeer = 0 }: { sinLeer?: number }) {
               className={({ isActive }) =>
                 [
                   'relative flex flex-col items-center justify-center gap-1 min-h-14 py-2',
-                  isActive ? 'text-tinta' : 'text-grafito',
+                  isActive ? 'text-[var(--grad-1)]' : 'text-grafito',
                 ].join(' ')
               }
             >
@@ -72,17 +72,17 @@ export function TabBar({ sinLeer = 0 }: { sinLeer?: number }) {
                   <span className="dato">{tab.etiqueta}</span>
                   {tab.a === '/matches' && sinLeer > 0 && (
                     <span
-                      className="absolute top-1.5 right-[calc(50%-1.5rem)] min-w-4 h-4 px-1 rounded-full bg-tinta text-papel font-mono text-[0.625rem] leading-4 text-center tabular"
+                      className="absolute top-1.5 right-[calc(50%-1.5rem)] min-w-4 h-4 px-1 rounded-full gradiente text-papel-fija text-[0.625rem] font-bold leading-4 text-center tabular"
                       aria-label={`${sinLeer} sin leer`}
                     >
                       {sinLeer > 9 ? '9+' : sinLeer}
                     </span>
                   )}
-                  {/* Subrayado de resaltador en la pestaña activa. */}
+                  {/* Punto de marca en la pestaña activa. */}
                   {isActive && (
                     <span
                       aria-hidden="true"
-                      className="absolute bottom-0 left-1/2 -translate-x-1/2 w-10 h-[3px] bg-[var(--acento)]"
+                      className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full gradiente"
                     />
                   )}
                 </>

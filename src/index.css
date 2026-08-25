@@ -1,90 +1,83 @@
 @import 'tailwindcss';
 
 /* ============================================================
-   Tokens — "papel y marcador"
-   Base de papel brillante, acentos de resaltador fluo.
-
-   REGLA DURA DEL SISTEMA: los fluo (mandarina, lima, agua) son SIEMPRE
-   relleno debajo de tinta. Nunca texto sobre papel. Igual que un resaltador
-   real. Eso da 9:1 a 14:1 de contraste y deja fuera, por concepto y no por
-   parche, el único caso que rompería accesibilidad.
-
-   SEGUNDA REGLA DURA: cero box-shadow en todo el proyecto. La profundidad
-   sale del color y del movimiento.
+   Tokens — estilo Tinder
+   Base blanca, gradiente firma rosa→naranja, tarjetas redondeadas
+   con sombra suave y botones circulares de acción.
    ============================================================ */
 
 @theme {
-  --color-papel: #f8f8f4;
-  --color-tinta: #161a20;
-  --color-grafito: #5e6672;
-  --color-lapiz: #e3e4dc;
+  --color-papel: #ffffff;
+  --color-tinta: #1a1a1c;
+  --color-grafito: #8e8e93;
+  --color-lapiz: #ececec;
 
-  /* Papel y tinta fijos, que NO se invierten con el modo oscuro. Existen para
-     los pocos lugares donde el contraste depende de un valor concreto y no
-     del rol "fondo de página" / "texto principal": texto sobre un fluo
-     (siempre claro, la regla dura de arriba) y overlays sobre una foto real
-     (que no se invierte porque la foto tampoco lo hace). */
-  --color-tinta-fija: #161a20;
-  --color-papel-fija: #f8f8f4;
+  /* Fijos que NO se invierten con el modo oscuro (texto sobre gradiente o
+     sobre una foto real, que tampoco se invierte). */
+  --color-tinta-fija: #1a1a1c;
+  --color-papel-fija: #ffffff;
 
-  /* Un fluo por intención. El color te dice en qué modo estás. */
-  --color-mandarina: #ffa24d; /* citas   */
-  --color-lima: #d8f94f; /* amistad */
-  --color-agua: #66e8dc; /* estudio */
+  /* Gradiente firma de la marca: rosa→naranja. */
+  --grad-1: #fd267d; /* rosa */
+  --grad-2: #ff6036; /* naranja */
+  --gradiente: linear-gradient(45deg, var(--grad-2), var(--grad-1));
 
-  --font-display: 'Archivo', ui-sans-serif, system-ui, sans-serif;
-  --font-body: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'DM Mono', ui-monospace, monospace;
+  /* Colores de las acciones, como en Tinder. */
+  --color-rosa: #fd5068; /* like / marca */
+  --color-nope: #fe3b5f; /* pasar (rojo) */
+  --color-like: #22d07c; /* me gusta (verde) */
+  --color-super: #22a6ff; /* super like (azul) */
+  --color-rewind: #ffb800; /* deshacer (amarillo) */
 
-  --radius-chip: 6px;
+  /* Un acento por intención — se conserva el modo de tres lentes, pero en
+     paleta Tinder. El color te dice en qué modo estás. */
+  --color-citas: #fd267d;
+  --color-amistad: #ff7854;
+  --color-estudio: #22a6ff;
+
+  --font-display: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+
+  --radius-chip: 12px;
+  --radius-card: 16px;
 
   --ease-salida: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ============================================================
-   Modo oscuro — sigue la preferencia del sistema, no hay switch manual.
-
-   Papel y tinta se invierten (mismo par, mismo contraste 9:1-14:1 que ya
-   estaba validado en claro). Grafito y lápiz se retocan a mano porque un
-   gris pensado para fondo claro no rinde igual sobre uno oscuro.
-
-   Los fluo NO se tocan: son acentos saturados, se leen bien sobre cualquiera
-   de los dos fondos. Por eso la regla dura de "texto sobre fluo siempre en
-   tinta" usa --color-tinta-fija y no --color-tinta: ese texto tiene que
-   seguir oscuro en modo oscuro, aunque el resto de la tinta se haya vuelto
-   clara.
+   Modo oscuro — sigue la preferencia del sistema.
    ============================================================ */
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-papel: #14171d;
-    --color-tinta: #f8f8f4;
-    --color-grafito: #929aa6;
-    --color-lapiz: #2b313c;
+    --color-papel: #000000;
+    --color-tinta: #f5f5f7;
+    --color-grafito: #98989f;
+    --color-lapiz: #26262a;
   }
 }
 
 /* ============================================================
    El acento cambia con el modo activo. Todo el chrome lo lee desde
-   var(--acento), así que mover el conmutador repinta la app entera.
+   var(--acento), así que mover el conmutador repinta la app.
    ============================================================ */
 
 :root {
-  --acento: var(--color-mandarina);
+  --acento: var(--color-citas);
 }
 [data-modo='citas'] {
-  --acento: var(--color-mandarina);
+  --acento: var(--color-citas);
 }
 [data-modo='amistad'] {
-  --acento: var(--color-lima);
+  --acento: var(--color-amistad);
 }
 [data-modo='estudio'] {
-  --acento: var(--color-agua);
+  --acento: var(--color-estudio);
 }
 
 @layer base {
   html {
-    /* Sin ajuste automático de tipografía al rotar el celular. */
     -webkit-text-size-adjust: 100%;
   }
 
@@ -93,16 +86,11 @@
     color: var(--color-tinta);
     font-family: var(--font-body);
     font-size: 1rem;
-    line-height: 1.6;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-
-    /* App shell: el body no scrollea nunca; scrollean los paneles internos.
-       overscroll-behavior mata el pull-to-refresh, que en una app de swipe
-       se dispara sin querer al arrastrar una card hacia abajo. */
     overscroll-behavior: none;
   }
 
-  /* El tap highlight azul de iOS/Android arruina la sensación de app. */
   * {
     -webkit-tap-highlight-color: transparent;
   }
@@ -111,64 +99,63 @@
   h2,
   h3 {
     font-family: var(--font-display);
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 0.95;
-    /* Archivo es variable: el eje de ancho es lo que le da carácter. */
-    font-variation-settings: 'wdth' 112;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
   }
 
-  /* Foco visible siempre, y que no quede tapado por el borde de la card. */
   :focus-visible {
-    outline: 3px solid var(--color-tinta);
+    outline: 3px solid var(--grad-1);
     outline-offset: 2px;
-    border-radius: 2px;
+    border-radius: 4px;
   }
 
-  /* Los números de datos (edad, cupos, hora) tienen que alinear en columna. */
   .tabular {
     font-variant-numeric: tabular-nums;
   }
 }
 
 @layer components {
-  /* Etiqueta de dato: mono, chica, espaciada. Se usa para carrera, año,
-     materias en común, hora del mensaje. */
+  /* Etiqueta de dato: chica, espaciada, en mayúsculas. */
   .dato {
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     font-size: 0.6875rem;
-    font-weight: 500;
-    letter-spacing: 0.09em;
+    font-weight: 600;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    line-height: 1;
+    line-height: 1.1;
   }
 
-  /* Marca de resaltador: relleno fluo detrás de tinta.
+  /* Fondo con el gradiente firma. */
+  .gradiente {
+    background-image: var(--gradiente);
+  }
 
-     El fondo de un inline ocupa toda la caja em de la fuente, que es más alta
-     que la línea cuando el line-height es apretado. En un título a 0.95 eso
-     hace que el resaltado de una línea se monte sobre la de arriba y le tape
-     las colas a las letras. Por eso cualquier título que lleve un .resaltado
-     necesita aire: de ahí la clase .titulo-resaltado.
-
-     box-decoration-break mantiene el relleno parejo cuando el texto envuelve
-     en más de una línea, en vez de cortarlo al medio. */
+  /* Texto pintado con el gradiente firma — el remate visual de Tinder. */
   .resaltado {
-    background-color: var(--acento);
-    color: var(--color-tinta-fija);
-    -webkit-box-decoration-break: clone;
-    box-decoration-break: clone;
+    background-image: var(--gradiente);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 700;
   }
 
   .titulo-resaltado {
-    line-height: 1.12;
+    line-height: 1.1;
+  }
+
+  /* Sombra suave de tarjeta, marca de la casa. */
+  .sombra-card {
+    box-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.22), 0 2px 8px -2px rgb(0 0 0 / 0.12);
+  }
+
+  .sombra-boton {
+    box-shadow: 0 6px 16px -4px rgb(0 0 0 / 0.18);
   }
 }
 
 /* ============================================================
    Accesibilidad de movimiento.
-   El swipe sigue funcionando: es un gesto, no una animación decorativa.
-   Lo que se apaga es la coreografía — rotación, overshoot, entradas.
    ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {

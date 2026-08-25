@@ -120,9 +120,9 @@ export function Mazo() {
           {siguiente && (
             <div
               aria-hidden="true"
-              className="absolute inset-0 scale-[0.96] origin-bottom opacity-60 pointer-events-none"
+              className="absolute inset-0 scale-[0.96] origin-bottom opacity-70 pointer-events-none"
             >
-              <div className="absolute inset-0 bg-papel border-2 border-lapiz rounded-chip" />
+              <div className="absolute inset-0 bg-papel rounded-card sombra-card" />
             </div>
           )}
 

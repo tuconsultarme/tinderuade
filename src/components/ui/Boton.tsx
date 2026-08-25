@@ -11,13 +11,13 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * Sin sombras y sin gradientes, por la regla del sistema. El peso visual sale
- * del relleno: `acento` es literalmente el resaltador del modo activo.
+ * Píldora al estilo Tinder. El primario `acento` va con el gradiente firma y
+ * una sombra suave; `fantasma` es un contorno para acciones secundarias.
  */
 const estilos: Record<Variante, string> = {
-  acento: 'bg-[var(--acento)] text-tinta-fija',
+  acento: 'gradiente text-papel-fija sombra-boton',
   tinta: 'bg-tinta text-papel',
-  fantasma: 'bg-transparent text-tinta border border-lapiz',
+  fantasma: 'bg-transparent text-grafito border-2 border-lapiz',
 }
 
 export function Boton({ variante = 'acento', ancho = false, className = '', children, ...rest }: Props) {
@@ -25,7 +25,7 @@ export function Boton({ variante = 'acento', ancho = false, className = '', chil
     <button
       {...rest}
       className={[
-        'min-h-12 px-5 rounded-chip font-semibold',
+        'min-h-13 px-6 rounded-full font-bold uppercase tracking-wide text-sm',
         // active:scale en vez de hover: en mobile el hover no existe y queda
         // un estado pegado después del tap.
         'transition-transform duration-150 active:scale-[0.97]',

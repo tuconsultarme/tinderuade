@@ -64,11 +64,21 @@ export function Entrada() {
     <ShellPlano>
       <div className="flex-1 flex flex-col justify-center px-6 py-10 gap-8">
         <div>
-          <p className="dato text-grafito mb-3">UADE</p>
-          <h1 className="titulo-resaltado text-[clamp(2.5rem,13vw,3.75rem)]">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="grid place-items-center w-11 h-11 rounded-2xl gradiente sombra-boton">
+              <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+                <path
+                  d="M12 21C6.5 17 4 13.4 4 9.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 13.4 17.5 17 12 21Z"
+                  fill="#fff"
+                />
+              </svg>
+            </span>
+            <span className="text-2xl font-extrabold resaltado">UADencuentros</span>
+          </div>
+          <h1 className="titulo-resaltado text-[clamp(2.25rem,11vw,3.25rem)] font-extrabold">
             Conocé gente
             <br />
-            <span className="resaltado px-1.5">de tu facu.</span>
+            <span className="resaltado">de tu facu.</span>
           </h1>
           <p className="mt-4 text-grafito text-balance">
             Para salir, para hacer amigos o para no rendir solo. Vos elegís con qué intención mirás.

@@ -103,12 +103,12 @@ export function Conmutador({ modo, onCambio, panelId }: Props) {
       role="tablist"
       aria-label="Con qué intención estás mirando"
       onKeyDown={alTeclado}
-      className="relative flex items-stretch p-1 mx-4 border-2 border-tinta rounded-chip select-none"
+      className="relative flex items-stretch p-1 mx-4 bg-lapiz/70 rounded-full select-none"
     >
       <span
         ref={pastilla}
         aria-hidden="true"
-        className="absolute top-1 bottom-1 left-0 rounded-[3px] bg-[var(--acento)] pointer-events-none"
+        className="absolute top-1 bottom-1 left-0 rounded-full gradiente sombra-boton pointer-events-none"
       />
 
       {INTENCIONES.map((intencion, i) => {
@@ -126,10 +126,10 @@ export function Conmutador({ modo, onCambio, panelId }: Props) {
             tabIndex={activo ? 0 : -1}
             onClick={() => onCambio(intencion.id)}
             className={[
-              'relative flex-1 min-h-10 px-2 rounded-[3px]',
-              'font-mono text-[0.6875rem] font-medium uppercase tracking-[0.09em]',
+              'relative flex-1 min-h-9 px-2 rounded-full',
+              'text-xs font-bold uppercase tracking-wide',
               'transition-colors duration-200',
-              activo ? 'text-tinta-fija' : 'text-grafito',
+              activo ? 'text-papel-fija' : 'text-grafito',
             ].join(' ')}
           >
             {intencion.etiqueta}
