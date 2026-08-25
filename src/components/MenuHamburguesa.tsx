@@ -173,6 +173,13 @@ export function MenuHamburguesa() {
     setCargandoLista(false)
   }
 
+  // El sector "Matches recientes" vive en la pantalla principal del menú, así
+  // que el historial se pide apenas se abre, no recién al entrar a esa
+  // subvista.
+  useEffect(() => {
+    if (abierto && historial === null) void cargarHistorial()
+  }, [abierto, historial])
+
   async function cargarBloqueados() {
     if (MODO_DEMO || !miId) {
       setBloqueados([])
@@ -204,6 +211,26 @@ export function MenuHamburguesa() {
     }
     setBloqueados((bl ?? []).map((b) => ({ id: b.bloqueado_id as string, nombre: null, fecha: b.created_at as string })))
     setCargandoLista(false)
+  }
+
+  /** Retira un like que todavía no fue respondido (la migración 0007 habilita
+   *  el DELETE sobre swipes propios). Si la otra persona ya hizo match o pass,
+   *  esto no debería poder llamarse: el botón solo aparece para 'pendiente'. */
+  async function cancelarPendiente(item: MatchHist) {
+    if (!miId) return
+    const previo = historial
+    setHistorial((h) => (h ?? []).filter((x) => !(x.otroId === item.otroId && x.intencion === item.intencion)))
+    const { error } = await supabase
+      .from('swipes')
+      .delete()
+      .eq('emisor_id', miId)
+      .eq('receptor_id', item.otroId)
+      .eq('intencion', item.intencion)
+      .eq('direccion', 'like')
+    if (error) {
+      setHistorial(previo)
+      setErrorLista('No se pudo cancelar. Probá de nuevo.')
+    }
   }
 
   async function desbloquear(id: string) {
@@ -287,6 +314,56 @@ export function MenuHamburguesa() {
                 <span className="font-semibold">Modo noche / día</span>
                 <AlternadorTema />
               </div>
+
+              <p className="dato text-grafito mt-5 mb-1">Matches recientes</p>
+              {historial === null ? (
+                <p className="text-sm text-grafito py-2">Cargando…</p>
+              ) : historial.length === 0 ? (
+                <p className="text-sm text-grafito py-2 text-balance">
+                  Todavía no diste ningún like ni tuviste matches.
+                </p>
+              ) : (
+                <ul className="flex flex-col">
+                  {historial.slice(0, 5).map((m, i) => (
+                    <li
+                      key={`${m.otroId}-${i}`}
+                      className="flex items-center gap-3 py-2.5 border-b border-lapiz"
+                    >
+                      <span className="flex-1 min-w-0">
+                        <span className="block font-semibold text-sm truncate">{m.nombre}</span>
+                        <span className="dato text-grafito">
+                          {definicion(m.intencion).etiqueta} · {fmtFecha(m.fecha)}
+                        </span>
+                      </span>
+                      {m.estado === 'pendiente' ? (
+                        <button
+                          type="button"
+                          onClick={() => void cancelarPendiente(m)}
+                          className="shrink-0 min-h-8 px-3 rounded-full border-2 border-lapiz font-bold uppercase tracking-wide text-xs active:scale-95 transition-transform"
+                        >
+                          Cancelar
+                        </button>
+                      ) : (
+                        <span
+                          className="shrink-0 px-2.5 py-1 rounded-full text-xs font-bold"
+                          style={{ backgroundColor: 'var(--color-like)', color: '#fff' }}
+                        >
+                          Aceptado
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {historial && historial.length > 5 && (
+                <button
+                  type="button"
+                  onClick={() => abrir('historial')}
+                  className="self-start text-sm font-semibold underline underline-offset-4 mt-2"
+                >
+                  Ver historial completo
+                </button>
+              )}
 
               <p className="dato text-grafito mt-5 mb-1">Tu actividad</p>
               <ItemNav
