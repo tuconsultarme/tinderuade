@@ -80,7 +80,12 @@ export interface Mensaje {
   id: number
   match_id: string
   emisor_id: string
-  contenido: string
+  /** Null cuando el mensaje es solo una foto. */
+  contenido: string | null
+  /** Path en el bucket privado fotos-chat, o null si es solo texto. */
+  imagen_path?: string | null
+  /** Id del mensaje al que responde (cita), o null. */
+  responde_a?: number | null
   leido_at: string | null
   created_at: string
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { urlsFirmadas } from '@/lib/fotos'
+import { urlsFirmadas, urlsFirmadasChat, subirImagenChat } from '@/lib/fotos'
 import { useSesion } from '@/context/SesionContext'
 import { ShellPlano } from '@/components/shell/AppShell'
 import { Cargando, Aviso } from '@/components/ui/Estados'
@@ -21,6 +21,17 @@ interface Cabecera {
   intencion: Intencion
 }
 
+/** Columnas que se piden de mensajes, incluidas las de chat rico. */
+const COLS = 'id, match_id, emisor_id, contenido, imagen_path, responde_a, leido_at, created_at'
+
+const EMOJIS = [
+  '😀', '😂', '🥹', '😍', '😎', '😭', '😅', '😉', '😘', '🥰',
+  '😜', '🤔', '🙄', '😴', '🤩', '🥳', '😇', '🙃', '😢', '😡',
+  '👍', '👎', '👏', '🙌', '🙏', '💪', '🤝', '👌', '✌️', '🤙',
+  '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '💔', '✨', '🔥',
+  '🎉', '💯', '⚽', '📚', '☕', '🍺', '🍻', '🎓',
+]
+
 export function Chat() {
   const { matchId } = useParams<{ matchId: string }>()
   const { sesion } = useSesion()
@@ -34,7 +45,28 @@ export function Chat() {
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
+  // Chat rico.
+  const [urlsImg, setUrlsImg] = useState<Map<string, string>>(new Map())
+  const [respondiendoA, setRespondiendoA] = useState<Mensaje | null>(null)
+  const [mostrarEmojis, setMostrarEmojis] = useState(false)
+  const [verImagen, setVerImagen] = useState<string | null>(null)
+  const [subiendo, setSubiendo] = useState(false)
+
   const finLista = useRef<HTMLDivElement>(null)
+  const inputArchivo = useRef<HTMLInputElement>(null)
+
+  /** Firma las URLs de las imágenes que todavía no tenemos. */
+  const firmarImagenes = useCallback(async (lista: Mensaje[]) => {
+    const paths = [...new Set(lista.map((m) => m.imagen_path).filter((p): p is string => Boolean(p)))]
+    if (paths.length === 0) return
+    const mapa = await urlsFirmadasChat(paths)
+    if (mapa.size === 0) return
+    setUrlsImg((prev) => {
+      const sig = new Map(prev)
+      for (const [k, v] of mapa) sig.set(k, v)
+      return sig
+    })
+  }, [])
 
   // ---- Cabecera: quién es el otro ----
   useEffect(() => {
@@ -98,8 +130,6 @@ export function Chat() {
       if (!miId) return
       const pendientes = lista.filter((m) => m.emisor_id !== miId && !m.leido_at).map((m) => m.id)
       if (pendientes.length === 0) return
-      // Solo se puede tocar leido_at: el grant por columna de 0003 bloquea
-      // cualquier intento de reescribir el contenido ajeno.
       await supabase.from('mensajes').update({ leido_at: new Date().toISOString() }).in('id', pendientes)
     },
     [miId, matchId],
@@ -121,7 +151,7 @@ export function Chat() {
     ;(async () => {
       const { data, error: err } = await supabase
         .from('mensajes')
-        .select('id, match_id, emisor_id, contenido, leido_at, created_at')
+        .select(COLS)
         .eq('match_id', matchId)
         .order('created_at', { ascending: true })
 
@@ -136,12 +166,13 @@ export function Chat() {
       setMensajes(lista)
       setCargando(false)
       void marcarLeidos(lista)
+      void firmarImagenes(lista)
     })()
 
     return () => {
       vigente = false
     }
-  }, [matchId, marcarLeidos])
+  }, [matchId, marcarLeidos, firmarImagenes])
 
   // ---- Realtime ----
   useEffect(() => {
@@ -160,10 +191,10 @@ export function Chat() {
         (payload) => {
           const nuevo = payload.new as Mensaje
           setMensajes((prev) => {
-            // El propio mensaje ya se insertó de forma optimista.
             if (prev.some((m) => m.id === nuevo.id)) return prev
             return [...prev, nuevo]
           })
+          if (nuevo.imagen_path) void firmarImagenes([nuevo])
           if (nuevo.emisor_id !== miId) void marcarLeidos([nuevo])
         },
       )
@@ -172,13 +203,16 @@ export function Chat() {
     return () => {
       void supabase.removeChannel(canal)
     }
-  }, [matchId, miId, marcarLeidos])
+  }, [matchId, miId, marcarLeidos, firmarImagenes])
 
-  // Bajar al último mensaje. 'auto' y no 'smooth': al abrir el chat el scroll
-  // animado desde arriba se ve como un glitch.
+  // Bajar al último mensaje.
   useEffect(() => {
     finLista.current?.scrollIntoView({ block: 'end' })
   }, [mensajes.length])
+
+  function agregarMensaje(m: Mensaje) {
+    setMensajes((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]))
+  }
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault()
@@ -187,29 +221,71 @@ export function Chat() {
 
     setEnviando(true)
     setTexto('')
+    setMostrarEmojis(false)
+    const citado = respondiendoA
+    setRespondiendoA(null)
 
     if (MODO_DEMO) {
-      setMensajes((prev) => [...prev, enviarMensajeDemo(matchId, contenido)])
+      const demo = enviarMensajeDemo(matchId, contenido)
+      agregarMensaje(citado ? { ...demo, responde_a: citado.id } : demo)
       setEnviando(false)
       return
     }
 
     const { data, error: err } = await supabase
       .from('mensajes')
-      .insert({ match_id: matchId, emisor_id: miId, contenido })
-      .select()
+      .insert({ match_id: matchId, emisor_id: miId, contenido, responde_a: citado?.id ?? null })
+      .select(COLS)
       .single()
 
     setEnviando(false)
 
     if (err) {
       setError('No se pudo enviar el mensaje.')
-      setTexto(contenido) // devolver lo escrito, no perderlo
+      setTexto(contenido)
+      setRespondiendoA(citado)
       return
     }
-    setMensajes((prev) =>
-      prev.some((m) => m.id === (data as Mensaje).id) ? prev : [...prev, data as Mensaje],
-    )
+    agregarMensaje(data as Mensaje)
+  }
+
+  async function elegirImagen(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // permitir volver a elegir la misma foto
+    if (!file || !matchId || !miId) return
+
+    if (MODO_DEMO) {
+      setError('Las fotos necesitan la base conectada (no andan en modo demo).')
+      return
+    }
+
+    const citado = respondiendoA
+    setRespondiendoA(null)
+    setMostrarEmojis(false)
+    setSubiendo(true)
+    setError(null)
+
+    try {
+      const path = await subirImagenChat(matchId, file)
+      const { data, error: err } = await supabase
+        .from('mensajes')
+        .insert({ match_id: matchId, emisor_id: miId, imagen_path: path, responde_a: citado?.id ?? null })
+        .select(COLS)
+        .single()
+
+      if (err) throw new Error(err.message)
+      const msg = data as Mensaje
+      await firmarImagenes([msg])
+      agregarMensaje(msg)
+    } catch {
+      setError('No se pudo enviar la foto. Probá con otra o más tarde.')
+    } finally {
+      setSubiendo(false)
+    }
+  }
+
+  function insertarEmoji(emoji: string) {
+    setTexto((t) => t + emoji)
   }
 
   if (cargando) {
@@ -244,13 +320,9 @@ export function Chat() {
 
           {cabecera && (
             <Link to={`/perfil/${cabecera.otroId}`} className="flex items-center gap-2.5 min-w-0">
-              <span className="block w-9 h-9 rounded-chip overflow-hidden border border-lapiz bg-lapiz/40 shrink-0">
+              <span className="block w-9 h-9 rounded-full overflow-hidden border border-lapiz bg-lapiz/40 shrink-0">
                 {cabecera.foto && (
-                  <img
-                    src={cabecera.foto}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={cabecera.foto} alt="" className="w-full h-full object-cover" />
                 )}
               </span>
               <span className="min-w-0">
@@ -261,7 +333,7 @@ export function Chat() {
           )}
         </header>
 
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 flex flex-col gap-2">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 flex flex-col gap-1.5">
           {error && <Aviso>{error}</Aviso>}
 
           {mensajes.length === 0 && !error && (
@@ -270,42 +342,110 @@ export function Chat() {
             </p>
           )}
 
-          {mensajes.map((m) => {
-            const mio = m.emisor_id === miId
-            return (
-              <div
-                key={m.id}
-                className={[
-                  'max-w-[80%] px-3 py-2 rounded-chip',
-                  mio
-                    ? 'self-end bg-[var(--acento)] text-tinta-fija'
-                    : 'self-start bg-papel border border-lapiz',
-                ].join(' ')}
-              >
-                <p className="text-[0.9375rem] leading-snug whitespace-pre-wrap break-words">
-                  {m.contenido}
-                </p>
-                <time
-                  dateTime={m.created_at}
-                  className="dato block mt-1 opacity-55 text-[0.5625rem]"
-                >
-                  {new Date(m.created_at).toLocaleTimeString('es-AR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    // Sin esto sale "02:53 P. M.": en Argentina la hora va de 0 a 23.
-                    hour12: false,
-                  })}
-                </time>
-              </div>
-            )
-          })}
+          {mensajes.map((m) => (
+            <Burbuja
+              key={m.id}
+              mensaje={m}
+              mio={m.emisor_id === miId}
+              nombreOtro={cabecera?.nombre ?? 'Alguien'}
+              urlImagen={m.imagen_path ? (urlsImg.get(m.imagen_path) ?? null) : null}
+              citado={m.responde_a ? mensajes.find((x) => x.id === m.responde_a) ?? null : null}
+              miId={miId}
+              onResponder={() => {
+                setRespondiendoA(m)
+                setMostrarEmojis(false)
+              }}
+              onAbrirImagen={setVerImagen}
+            />
+          ))}
           <div ref={finLista} />
         </div>
 
+        {/* Cita del mensaje al que se responde. */}
+        {respondiendoA && (
+          <div className="shrink-0 flex items-center gap-2 px-3 py-2 border-t border-lapiz bg-lapiz/30">
+            <span className="w-1 self-stretch rounded-full bg-[var(--acento)]" aria-hidden="true" />
+            <div className="flex-1 min-w-0">
+              <p className="dato text-[var(--grad-1)]">
+                Respondiendo a {respondiendoA.emisor_id === miId ? 'vos' : cabecera?.nombre}
+              </p>
+              <p className="text-sm text-grafito truncate">
+                {respondiendoA.contenido ?? '📷 Foto'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRespondiendoA(null)}
+              aria-label="Cancelar respuesta"
+              className="grid place-items-center w-7 h-7 rounded-full text-grafito active:scale-90"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+        )}
+
+        {/* Selector de emojis. */}
+        {mostrarEmojis && (
+          <div className="shrink-0 border-t border-lapiz px-2 py-2 max-h-40 overflow-y-auto">
+            <div className="grid grid-cols-8 gap-1">
+              {EMOJIS.map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => insertarEmoji(e)}
+                  className="text-2xl h-9 grid place-items-center rounded-lg active:scale-90"
+                  aria-label={`Emoji ${e}`}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <form
           onSubmit={enviar}
-          className="shrink-0 flex items-end gap-2 px-3 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] border-t border-lapiz"
+          className="shrink-0 flex items-end gap-1.5 px-2 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] border-t border-lapiz"
         >
+          <input
+            ref={inputArchivo}
+            type="file"
+            accept="image/*"
+            onChange={elegirImagen}
+            className="hidden"
+          />
+
+          <button
+            type="button"
+            onClick={() => setMostrarEmojis((v) => !v)}
+            aria-label="Emojis"
+            aria-pressed={mostrarEmojis}
+            className="w-10 h-10 shrink-0 grid place-items-center rounded-full text-grafito active:scale-90"
+          >
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.8" />
+              <circle cx="9" cy="10" r="1.1" fill="currentColor" />
+              <circle cx="15" cy="10" r="1.1" fill="currentColor" />
+              <path d="M8.5 14.5a4 4 0 0 0 7 0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => inputArchivo.current?.click()}
+            disabled={subiendo}
+            aria-label="Enviar una foto"
+            className="w-10 h-10 shrink-0 grid place-items-center rounded-full text-grafito active:scale-90 disabled:opacity-40"
+          >
+            <svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+              <circle cx="9" cy="10" r="1.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M4 17l4.5-4.5 4 4L15 13l5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+            </svg>
+          </button>
+
           <label htmlFor="mensaje" className="sr-only">
             Escribir un mensaje
           </label>
@@ -314,8 +454,6 @@ export function Chat() {
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             onKeyDown={(e) => {
-              // Enter manda, Shift+Enter hace salto de línea. En el celular el
-              // teclado muestra "enter" normal, así que no molesta.
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
                 void enviar(e)
@@ -323,14 +461,14 @@ export function Chat() {
             }}
             rows={1}
             maxLength={2000}
-            placeholder="Escribí algo"
-            className="flex-1 max-h-28 px-3.5 py-2.5 text-base bg-transparent border border-lapiz rounded-chip resize-none focus:border-tinta focus:outline-none"
+            placeholder={subiendo ? 'Enviando foto…' : 'Escribí algo'}
+            className="flex-1 max-h-28 px-3.5 py-2.5 text-base bg-lapiz/40 rounded-3xl resize-none focus:outline-none focus:ring-2 focus:ring-[var(--grad-1)]"
           />
           <button
             type="submit"
             disabled={!texto.trim() || enviando}
             aria-label="Enviar"
-            className="w-11 h-11 shrink-0 grid place-items-center rounded-chip bg-tinta text-papel disabled:opacity-30"
+            className="w-11 h-11 shrink-0 grid place-items-center rounded-full gradiente text-papel-fija disabled:opacity-30"
           >
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
               <path
@@ -345,6 +483,120 @@ export function Chat() {
           </button>
         </form>
       </div>
+
+      {/* Visor de imagen a pantalla completa. */}
+      {verImagen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Foto"
+          onClick={() => setVerImagen(null)}
+          className="fixed inset-0 z-50 bg-black/90 grid place-items-center p-4"
+        >
+          <img src={verImagen} alt="Foto del chat" className="max-w-full max-h-full object-contain rounded-lg" />
+          <button
+            type="button"
+            aria-label="Cerrar"
+            className="absolute top-4 right-4 grid place-items-center w-10 h-10 rounded-full bg-white/15 text-white"
+          >
+            <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+      )}
     </ShellPlano>
+  )
+}
+
+interface BurbujaProps {
+  mensaje: Mensaje
+  mio: boolean
+  nombreOtro: string
+  urlImagen: string | null
+  citado: Mensaje | null
+  miId: string | undefined
+  onResponder: () => void
+  onAbrirImagen: (url: string) => void
+}
+
+function Burbuja({ mensaje, mio, nombreOtro, urlImagen, citado, miId, onResponder, onAbrirImagen }: BurbujaProps) {
+  return (
+    <div className={['group flex items-center gap-1.5', mio ? 'self-end flex-row-reverse' : 'self-start'].join(' ')}>
+      <div
+        className={[
+          'max-w-[78vw] sm:max-w-[80%] px-2.5 py-2 rounded-2xl',
+          mio ? 'bg-[var(--acento)] text-tinta-fija' : 'bg-lapiz/50',
+        ].join(' ')}
+      >
+        {/* Cita del mensaje respondido. */}
+        {citado && (
+          <div
+            className={[
+              'mb-1.5 pl-2 py-1 rounded-lg text-xs border-l-2',
+              mio ? 'bg-black/10 border-black/40' : 'bg-black/5 border-[var(--acento)]',
+            ].join(' ')}
+          >
+            <span className="block font-semibold opacity-80">
+              {citado.emisor_id === miId ? 'Vos' : nombreOtro}
+            </span>
+            <span className="block opacity-70 truncate">{citado.contenido ?? '📷 Foto'}</span>
+          </div>
+        )}
+
+        {urlImagen && (
+          <button
+            type="button"
+            onClick={() => onAbrirImagen(urlImagen)}
+            className="block mb-1 overflow-hidden rounded-lg"
+          >
+            <img
+              src={urlImagen}
+              alt="Foto"
+              className="max-w-[220px] max-h-[280px] object-cover"
+              onLoad={() => {}}
+            />
+          </button>
+        )}
+        {/* Placeholder mientras se firma la URL de una imagen recién llegada. */}
+        {mensaje.imagen_path && !urlImagen && (
+          <div className="w-[180px] h-[140px] grid place-items-center rounded-lg bg-black/10 text-xs opacity-60">
+            Cargando foto…
+          </div>
+        )}
+
+        {mensaje.contenido && (
+          <p className="text-[0.9375rem] leading-snug whitespace-pre-wrap break-words">
+            {mensaje.contenido}
+          </p>
+        )}
+
+        <time dateTime={mensaje.created_at} className="dato block mt-0.5 opacity-55 text-[0.5625rem]">
+          {new Date(mensaje.created_at).toLocaleTimeString('es-AR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          })}
+        </time>
+      </div>
+
+      {/* Responder — aparece al pasar/tocar la burbuja. */}
+      <button
+        type="button"
+        onClick={onResponder}
+        aria-label="Responder"
+        className="shrink-0 grid place-items-center w-7 h-7 rounded-full text-grafito opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity active:scale-90"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path
+            d="M10 9V5l-7 7 7 7v-4c5 0 8 1.5 10 5 0-7-4-11-10-11Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+    </div>
   )
 }

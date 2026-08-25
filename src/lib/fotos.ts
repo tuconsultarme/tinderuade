@@ -3,6 +3,7 @@ import { VENCIMIENTO_URL_FOTO } from './config'
 import type { Foto } from './tipos'
 
 const BUCKET = 'fotos-perfil'
+const BUCKET_CHAT = 'fotos-chat'
 
 /**
  * Las subidas van por fetch directo al endpoint REST de Storage, no por
@@ -116,12 +117,15 @@ export async function borrarFoto(foto: Foto): Promise<void> {
  * Se piden todas juntas en un solo request: el mazo muestra hasta 6 fotos por
  * candidato y de a una sería una tormenta de llamadas.
  */
-export async function urlsFirmadas(paths: string[]): Promise<Map<string, string>> {
+export async function urlsFirmadas(
+  paths: string[],
+  bucket: string = BUCKET,
+): Promise<Map<string, string>> {
   const mapa = new Map<string, string>()
   if (paths.length === 0) return mapa
 
   const token = await tokenDeSesion()
-  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${BUCKET}`, {
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${bucket}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -151,4 +155,40 @@ export async function urlsFirmadas(paths: string[]): Promise<Map<string, string>
 export async function reordenarFotos(ids: string[]): Promise<void> {
   const { error } = await supabase.rpc('reordenar_fotos', { p_ids: ids })
   if (error) throw new Error(`No se pudo reordenar: ${error.message}`)
+}
+
+/**
+ * Sube una imagen al bucket privado del chat y devuelve su path.
+ *
+ * Convención de path: {match_id}/{uuid}.webp — la primera carpeta es el match,
+ * y la política de `0008_chat_rico.sql` solo deja subir a sus participantes.
+ * No registra fila: la referencia la guarda el propio mensaje (imagen_path).
+ */
+export async function subirImagenChat(matchId: string, file: File): Promise<string> {
+  const blob = await comprimir(file)
+  const path = `${matchId}/${crypto.randomUUID()}.webp`
+  const token = await tokenDeSesion()
+
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET_CHAT}/${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      apikey: SUPABASE_ANON_KEY,
+      'Content-Type': 'image/webp',
+      'x-upsert': 'true',
+    },
+    body: blob,
+  })
+
+  if (!res.ok) {
+    const detalle = await res.text().catch(() => '')
+    throw new Error(`No se pudo subir la imagen (${res.status}). ${detalle}`)
+  }
+
+  return path
+}
+
+/** Firma URLs de imágenes del chat (bucket privado fotos-chat). */
+export function urlsFirmadasChat(paths: string[]): Promise<Map<string, string>> {
+  return urlsFirmadas(paths, BUCKET_CHAT)
 }

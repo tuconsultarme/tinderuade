@@ -873,6 +873,64 @@ create policy "deshacer swipe propio" on swipes
   using (emisor_id = auth.uid());
 
 -- ############################################################
+-- ### migrations/0008_chat_rico.sql
+-- ############################################################
+
+-- Mensajes: imagen y respuesta (cita estilo WhatsApp).
+alter table mensajes alter column contenido drop not null;
+
+alter table mensajes drop constraint if exists mensajes_contenido_check;
+alter table mensajes drop constraint if exists mensajes_contenido_len;
+alter table mensajes
+  add constraint mensajes_contenido_len
+  check (contenido is null or char_length(contenido) between 1 and 2000);
+
+alter table mensajes add column if not exists imagen_path text;
+
+alter table mensajes add column if not exists responde_a bigint
+  references mensajes (id) on delete set null;
+
+alter table mensajes drop constraint if exists mensajes_tiene_contenido;
+alter table mensajes
+  add constraint mensajes_tiene_contenido
+  check (contenido is not null or imagen_path is not null);
+
+-- Bucket privado de fotos de chat: solo los participantes del match suben y ven.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'fotos-chat',
+  'fotos-chat',
+  false,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp']
+)
+on conflict (id) do nothing;
+
+drop policy if exists "subir fotos de chat" on storage.objects;
+create policy "subir fotos de chat" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'fotos-chat'
+    and public.es_participante_del_match(((storage.foldername(name))[1])::uuid)
+  );
+
+drop policy if exists "ver fotos de chat" on storage.objects;
+create policy "ver fotos de chat" on storage.objects
+  for select to authenticated
+  using (
+    bucket_id = 'fotos-chat'
+    and public.es_participante_del_match(((storage.foldername(name))[1])::uuid)
+  );
+
+drop policy if exists "borrar fotos de chat propias" on storage.objects;
+create policy "borrar fotos de chat propias" on storage.objects
+  for delete to authenticated
+  using (
+    bucket_id = 'fotos-chat'
+    and owner = auth.uid()
+  );
+
+-- ############################################################
 -- ### seed.sql
 -- ############################################################
 

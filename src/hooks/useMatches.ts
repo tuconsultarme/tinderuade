@@ -59,7 +59,7 @@ export function useMatches(miId: string | undefined) {
         .eq('orden', 0),
       supabase
         .from('mensajes')
-        .select('id, match_id, emisor_id, contenido, leido_at, created_at')
+        .select('id, match_id, emisor_id, contenido, imagen_path, leido_at, created_at')
         .in(
           'match_id',
           propios.map((m) => m.id),

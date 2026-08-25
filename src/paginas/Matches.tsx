@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSesion } from '@/context/SesionContext'
 import { useMatches } from '@/hooks/useMatches'
@@ -5,9 +6,18 @@ import { Cargando, Vacio } from '@/components/ui/Estados'
 import { definicion } from '@/lib/intenciones'
 import type { MatchConPerfil } from '@/lib/tipos'
 
+/** Saca acentos y mayúsculas para que "Tomas" encuentre a "Tomás". */
+function normalizar(texto: string): string {
+  return texto
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, "")
+}
+
 export function Matches() {
   const { sesion } = useSesion()
   const { matches, cargando } = useMatches(sesion?.user.id)
+  const [busqueda, setBusqueda] = useState('')
 
   if (cargando) return <Cargando texto="Buscando tus matches" />
 
@@ -20,16 +30,73 @@ export function Matches() {
     )
   }
 
+  const filtro = normalizar(busqueda.trim())
+  const filtrados = filtro
+    ? matches.filter((m) => normalizar(m.otro.nombre).includes(filtro))
+    : matches
+
   return (
     <div className="px-4 py-4">
       <h1 className="text-3xl mb-4">Matches</h1>
-      <ul className="flex flex-col">
-        {matches.map((m) => (
-          <li key={m.id}>
-            <Fila match={m} miId={sesion!.user.id} />
-          </li>
-        ))}
-      </ul>
+
+      <div className="relative mb-4">
+        <span
+          aria-hidden="true"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-grafito pointer-events-none"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
+            <path
+              d="M16.5 16.5L21 21"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
+        <input
+          type="search"
+          inputMode="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre"
+          aria-label="Buscar matches por nombre"
+          className="w-full min-h-11 pl-10 pr-9 bg-lapiz/40 rounded-full text-base text-tinta placeholder:text-grafito/70 focus:outline-none focus:ring-2 focus:ring-[var(--grad-1)]"
+        />
+        {busqueda && (
+          <button
+            type="button"
+            onClick={() => setBusqueda('')}
+            aria-label="Limpiar búsqueda"
+            className="absolute right-2 top-1/2 -translate-y-1/2 grid place-items-center w-7 h-7 rounded-full text-grafito active:scale-90 transition-transform"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path
+                d="M6 6l12 12M18 6L6 18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {filtrados.length === 0 ? (
+        <p className="text-center text-grafito py-8">
+          No hay matches que coincidan con “{busqueda.trim()}”.
+        </p>
+      ) : (
+        <ul className="flex flex-col">
+          {filtrados.map((m) => (
+            <li key={m.id}>
+              <Fila match={m} miId={sesion!.user.id} />
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
@@ -69,7 +136,7 @@ function Fila({ match, miId }: { match: MatchConPerfil; miId: string }) {
         </span>
         <span className="block text-sm text-grafito truncate">
           {ultimoMensaje
-            ? `${mio ? 'Vos: ' : ''}${ultimoMensaje.contenido}`
+            ? `${mio ? 'Vos: ' : ''}${ultimoMensaje.contenido ?? '📷 Foto'}`
             : 'Hicieron match. Escribile.'}
         </span>
       </span>
