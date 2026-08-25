@@ -55,7 +55,13 @@ function MazoConTabs() {
 }
 
 function Rutas() {
-  const { sesion, perfil, cargando } = useSesion()
+  const { sesion, perfil, cargando, recuperacion } = useSesion()
+
+  // El link de recuperar contraseña arma una sesión válida como cualquier
+  // otra (Supabase lo consume solo de la URL), así que sin este corte
+  // alguien que solo quería cambiar la contraseña terminaría derecho en el
+  // mazo, con la contraseña vieja todavía puesta. Toma cualquier ruta.
+  if (recuperacion) return <Entrada recuperacionForzada />
 
   return (
     <Routes>
