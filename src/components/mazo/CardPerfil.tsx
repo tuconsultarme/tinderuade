@@ -46,8 +46,8 @@ export const CardPerfil = forwardRef<HTMLDivElement, Props>(function CardPerfil(
 
         {/* Nombre y edad sobre la foto: en citas es lo primero que se lee. */}
         {modo === 'citas' && (
-          <div className="absolute left-0 right-0 bottom-0 p-4 pt-16 bg-gradient-to-t from-tinta/85 to-transparent">
-            <h2 data-flip-id="nombre" className="text-papel text-[2rem] leading-none">
+          <div className="absolute left-0 right-0 bottom-0 p-4 pt-16 bg-gradient-to-t from-tinta-fija/85 to-transparent">
+            <h2 data-flip-id="nombre" className="text-papel-fija text-[2rem] leading-none">
               {nombre}
               <span className="tabular font-mono text-xl font-normal ml-2">{edad}</span>
             </h2>

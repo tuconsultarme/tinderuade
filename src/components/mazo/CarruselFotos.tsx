@@ -77,7 +77,7 @@ export function CarruselFotos({ fotos, nombre }: Props) {
                 key={src}
                 className={[
                   'flex-1 h-[3px] rounded-full',
-                  idx === i ? 'bg-papel' : 'bg-papel/35',
+                  idx === i ? 'bg-papel-fija' : 'bg-papel-fija/35',
                 ].join(' ')}
               />
             ))}
@@ -94,7 +94,7 @@ export function CarruselFotos({ fotos, nombre }: Props) {
             className="absolute left-0 top-0 bottom-24 w-1/3 flex items-center justify-start pl-2 disabled:pointer-events-none"
           >
             {i > 0 && (
-              <span className="grid place-items-center w-8 h-8 rounded-full bg-tinta/45 text-papel">
+              <span className="grid place-items-center w-8 h-8 rounded-full bg-tinta-fija/45 text-papel-fija">
                 <FlechaCarrusel direccion="izquierda" />
               </span>
             )}
@@ -108,7 +108,7 @@ export function CarruselFotos({ fotos, nombre }: Props) {
             className="absolute right-0 top-0 bottom-24 w-1/3 flex items-center justify-end pr-2 disabled:pointer-events-none"
           >
             {i < total - 1 && (
-              <span className="grid place-items-center w-8 h-8 rounded-full bg-tinta/45 text-papel">
+              <span className="grid place-items-center w-8 h-8 rounded-full bg-tinta-fija/45 text-papel-fija">
                 <FlechaCarrusel direccion="derecha" />
               </span>
             )}

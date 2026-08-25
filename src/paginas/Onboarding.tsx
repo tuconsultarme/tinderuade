@@ -287,7 +287,7 @@ export function Onboarding() {
                     data-modo={i.id}
                     className={[
                       'flex items-start gap-3 p-4 rounded-chip border-2 cursor-pointer',
-                      elegida ? 'border-tinta bg-[var(--acento)]' : 'border-lapiz',
+                      elegida ? 'border-tinta bg-[var(--acento)] text-tinta-fija' : 'border-lapiz',
                     ].join(' ')}
                   >
                     <input
@@ -298,7 +298,7 @@ export function Onboarding() {
                     />
                     <span>
                       <span className="block font-semibold">{i.etiqueta}</span>
-                      <span className="block text-sm text-tinta/75">{i.titulo}</span>
+                      <span className="block text-sm opacity-75">{i.titulo}</span>
                     </span>
                   </label>
                 )
@@ -332,7 +332,9 @@ export function Onboarding() {
                         key={g.valor}
                         className={[
                           'px-3.5 py-2.5 rounded-chip border-2 cursor-pointer text-sm font-medium',
-                          elegido ? 'border-tinta bg-[var(--acento)]' : 'border-lapiz text-grafito',
+                          elegido
+                            ? 'border-tinta bg-[var(--acento)] text-tinta-fija'
+                            : 'border-lapiz text-grafito',
                         ].join(' ')}
                       >
                         <input

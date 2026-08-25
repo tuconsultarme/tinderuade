@@ -129,7 +129,7 @@ export function Conmutador({ modo, onCambio, panelId }: Props) {
               'relative flex-1 min-h-10 px-2 rounded-[3px]',
               'font-mono text-[0.6875rem] font-medium uppercase tracking-[0.09em]',
               'transition-colors duration-200',
-              activo ? 'text-tinta' : 'text-grafito',
+              activo ? 'text-tinta-fija' : 'text-grafito',
             ].join(' ')}
           >
             {intencion.etiqueta}

@@ -15,7 +15,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
  * del relleno: `acento` es literalmente el resaltador del modo activo.
  */
 const estilos: Record<Variante, string> = {
-  acento: 'bg-[var(--acento)] text-tinta',
+  acento: 'bg-[var(--acento)] text-tinta-fija',
   tinta: 'bg-tinta text-papel',
   fantasma: 'bg-transparent text-tinta border border-lapiz',
 }

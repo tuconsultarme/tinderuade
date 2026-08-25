@@ -278,7 +278,7 @@ export function Chat() {
                 className={[
                   'max-w-[80%] px-3 py-2 rounded-chip',
                   mio
-                    ? 'self-end bg-[var(--acento)] text-tinta'
+                    ? 'self-end bg-[var(--acento)] text-tinta-fija'
                     : 'self-start bg-papel border border-lapiz',
                 ].join(' ')}
               >
