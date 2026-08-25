@@ -39,6 +39,8 @@ interface MatchHist {
   otroId: string
   nombre: string
   intencion: Intencion
+  /** 'aceptado' = match mutuo; 'pendiente' = like tuyo sin respuesta todavía. */
+  estado: 'pendiente' | 'aceptado'
   activo: boolean
   fecha: string
 }
@@ -109,37 +111,63 @@ export function MenuHamburguesa() {
     }
     setCargandoLista(true)
     setErrorLista(null)
-    // La RLS "ver matches propios" ya devuelve solo los míos, activos o no.
-    const { data: ms, error } = await supabase
-      .from('matches')
-      .select('profile_a, profile_b, intencion, activo, created_at')
-      .order('created_at', { ascending: false })
 
-    if (error) {
+    // Matches (mutuos, la RLS ya devuelve solo los míos) + mis likes (para los
+    // que todavía no respondieron: esos son los "pendientes").
+    const [{ data: ms, error: em }, { data: sw, error: es }] = await Promise.all([
+      supabase.from('matches').select('profile_a, profile_b, intencion, activo, created_at'),
+      supabase.from('swipes').select('receptor_id, intencion, created_at').eq('direccion', 'like'),
+    ])
+
+    if (em || es) {
       setErrorLista('No se pudo cargar el historial.')
       setCargandoLista(false)
       return
     }
 
-    const filas = ms ?? []
-    const otros = [...new Set(filas.map((m) => (m.profile_a === miId ? m.profile_b : m.profile_a)))]
-    const { data: perfiles } = otros.length
-      ? await supabase.from('profiles').select('id, nombre').in('id', otros)
+    const matches = ms ?? []
+    const likes = sw ?? []
+
+    // Con qué personas (por intención) ya hay match, para no listar el like como
+    // pendiente si en realidad ya fue correspondido.
+    const yaMatch = new Set(
+      matches.map((m) => `${m.profile_a === miId ? m.profile_b : m.profile_a}|${m.intencion}`),
+    )
+
+    const items: MatchHist[] = []
+    for (const m of matches) {
+      const otroId = m.profile_a === miId ? m.profile_b : m.profile_a
+      items.push({
+        otroId,
+        nombre: '',
+        intencion: m.intencion as Intencion,
+        estado: 'aceptado',
+        activo: m.activo as boolean,
+        fecha: m.created_at as string,
+      })
+    }
+    for (const s of likes) {
+      if (yaMatch.has(`${s.receptor_id}|${s.intencion}`)) continue
+      items.push({
+        otroId: s.receptor_id as string,
+        nombre: '',
+        intencion: s.intencion as Intencion,
+        estado: 'pendiente',
+        activo: true,
+        fecha: s.created_at as string,
+      })
+    }
+
+    // Nombres en una sola consulta.
+    const ids = [...new Set(items.map((i) => i.otroId))]
+    const { data: perfiles } = ids.length
+      ? await supabase.from('profiles').select('id, nombre').in('id', ids)
       : { data: [] as { id: string; nombre: string }[] }
     const nombre = new Map((perfiles ?? []).map((p) => [p.id, p.nombre as string]))
+    for (const it of items) it.nombre = nombre.get(it.otroId) ?? 'Perfil no disponible'
 
-    setHistorial(
-      filas.map((m) => {
-        const otroId = m.profile_a === miId ? m.profile_b : m.profile_a
-        return {
-          otroId,
-          nombre: nombre.get(otroId) ?? 'Perfil no disponible',
-          intencion: m.intencion as Intencion,
-          activo: m.activo as boolean,
-          fecha: m.created_at as string,
-        }
-      }),
-    )
+    items.sort((a, b) => b.fecha.localeCompare(a.fecha))
+    setHistorial(items)
     setCargandoLista(false)
   }
 
@@ -298,7 +326,7 @@ export function MenuHamburguesa() {
             <Lista
               cargando={cargandoLista}
               error={errorLista}
-              vacio="Todavía no tuviste ningún match."
+              vacio="Todavía no diste ningún like ni tuviste matches."
               hayItems={Boolean(historial?.length)}
             >
               {historial?.map((m, i) => (
@@ -307,8 +335,18 @@ export function MenuHamburguesa() {
                     <span className="block font-semibold truncate">{m.nombre}</span>
                     <span className="dato text-grafito">
                       {definicion(m.intencion).etiqueta} · {fmtFecha(m.fecha)}
-                      {!m.activo && ' · deshecho'}
+                      {m.estado === 'aceptado' && !m.activo && ' · deshecho'}
                     </span>
+                  </span>
+                  <span
+                    className="shrink-0 px-2.5 py-1 rounded-full text-xs font-bold"
+                    style={
+                      m.estado === 'aceptado'
+                        ? { backgroundColor: 'var(--color-like)', color: '#fff' }
+                        : { backgroundColor: 'var(--color-rewind)', color: '#1a1a1c' }
+                    }
+                  >
+                    {m.estado === 'aceptado' ? 'Aceptado' : 'Pendiente'}
                   </span>
                 </li>
               ))}
