@@ -1,6 +1,6 @@
 -- UADencuentros — schema completo
 -- Generado desde migrations/ + seed.sql. Pegar todo junto en el SQL Editor de Supabase.
--- Validado contra PostgreSQL 16 con stubs de auth/storage: 23 tests funcionales en verde.
+-- Validado contra PostgreSQL 16 con stubs de auth/storage.
 
 -- ############################################################
 -- ### migrations/0001_schema_inicial.sql
@@ -876,35 +876,59 @@ create policy "deshacer swipe propio" on swipes
 -- ### migrations/0008_chat_rico.sql
 -- ############################################################
 
--- Mensajes: imagen y respuesta (cita estilo WhatsApp).
+-- UADencuentros — chat con imágenes y respuestas
+-- Ejecutar después de 0007.
+
+-- ============================================================
+-- 1. Mensajes: imagen y respuesta (cita estilo WhatsApp)
+-- ============================================================
+
+-- El contenido deja de ser obligatorio: un mensaje puede ser solo una foto.
 alter table mensajes alter column contenido drop not null;
 
+-- El check inline original (contenido entre 1 y 2000) se llamaba
+-- mensajes_contenido_check. Se reemplaza por uno que tolera el null.
 alter table mensajes drop constraint if exists mensajes_contenido_check;
 alter table mensajes drop constraint if exists mensajes_contenido_len;
 alter table mensajes
   add constraint mensajes_contenido_len
   check (contenido is null or char_length(contenido) between 1 and 2000);
 
+-- Path de la imagen en el bucket privado fotos-chat (null si es solo texto).
 alter table mensajes add column if not exists imagen_path text;
 
+-- A qué mensaje responde. Si el citado se borra, la respuesta queda sin cita.
 alter table mensajes add column if not exists responde_a bigint
   references mensajes (id) on delete set null;
 
+-- Un mensaje tiene que tener texto o imagen (o las dos), nunca vacío.
 alter table mensajes drop constraint if exists mensajes_tiene_contenido;
 alter table mensajes
   add constraint mensajes_tiene_contenido
   check (contenido is not null or imagen_path is not null);
 
--- Bucket privado de fotos de chat: solo los participantes del match suben y ven.
+-- Las políticas de insert/select de 0003 siguen valiendo: las columnas nuevas
+-- viajan en el mismo insert del emisor, y el grant de update sigue acotado a
+-- leido_at, así que nadie puede reescribir la imagen ni la cita de otro.
+
+-- ============================================================
+-- 2. Bucket privado de fotos de chat
+-- ============================================================
+
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'fotos-chat',
   'fotos-chat',
   false,
-  5242880,
+  5242880, -- 5 MB
   array['image/jpeg', 'image/png', 'image/webp']
 )
 on conflict (id) do nothing;
+
+-- Convención de path: {match_id}/{uuid}.webp
+-- La primera carpeta es el match, y solo sus participantes pueden subir o ver.
+-- Más cerrado que las fotos de perfil (que las ve cualquier logueado): una foto
+-- mandada en un chat es privada de esa conversación.
 
 drop policy if exists "subir fotos de chat" on storage.objects;
 create policy "subir fotos de chat" on storage.objects
@@ -929,6 +953,292 @@ create policy "borrar fotos de chat propias" on storage.objects
     bucket_id = 'fotos-chat'
     and owner = auth.uid()
   );
+
+-- ############################################################
+-- ### migrations/0009_dos_intenciones.sql
+-- ############################################################
+
+-- UADencuentros — de tres intenciones a dos
+-- Ejecutar después de 0008.
+--
+-- Cambia el producto: quedan solo `match` y `estudio`.
+--   match   → gente que NO es de tu mismo género
+--   estudio → gente de tu misma carrera
+--
+-- `amistad` desaparece y `citas` pasa a llamarse `match`. Los swipes y matches
+-- que existían como 'citas' se conservan bajo el nombre nuevo; los de
+-- 'amistad' se borran, porque esa intención ya no existe en el producto.
+--
+-- OJO: esto borra datos. Los matches de amistad y sus conversaciones se van.
+
+begin;
+
+-- ============================================================
+-- 1. Sacar lo que era 'amistad'
+-- ============================================================
+-- Los mensajes cuelgan de matches con on delete cascade, así que se van solos.
+
+delete from matches where intencion = 'amistad';
+delete from swipes where intencion = 'amistad';
+delete from profile_intenciones where intencion = 'amistad';
+
+-- ============================================================
+-- 2. Reemplazar el tipo
+-- ============================================================
+-- Postgres no deja quitar un valor de un enum: hay que crear el tipo nuevo,
+-- migrar las columnas y descartar el viejo. El renombre de 'citas' a 'match'
+-- se hace en el mismo USING, así no hacen falta dos pasadas.
+
+-- Cualquier función que mencione el tipo en su firma bloquea el DROP TYPE.
+-- `get_candidatos` la recreamos nosotros más abajo, pero puede haber otras
+-- creadas a mano desde el SQL Editor y que no estén en estas migraciones
+-- (pasó con `mis_likes_recibidos()`). En vez de borrarlas con CASCADE y
+-- perderlas, se guarda su definición, se las borra y se las vuelve a crear
+-- igual al final.
+create temp table _funcs_guardadas on commit drop as
+select
+  p.oid::regprocedure::text as firma,
+  pg_get_functiondef(p.oid) as definicion
+from pg_proc p
+where p.pronamespace = 'public'::regnamespace
+  and p.proname <> 'get_candidatos'
+  and (
+    -- el tipo aparece en los argumentos o en el valor de retorno
+    'intencion'::regtype = any (p.proargtypes::oid[])
+    or p.prorettype = 'intencion'::regtype
+    or exists (
+      select 1 from unnest(coalesce(p.proallargtypes, p.proargtypes::oid[])) a
+      where a = 'intencion'::regtype
+    )
+  );
+
+do $$
+declare r record;
+begin
+  for r in select firma from _funcs_guardadas loop
+    raise notice 'Guardada para recrear: %', r.firma;
+    execute format('drop function %s', r.firma);
+  end loop;
+end $$;
+
+drop function if exists get_candidatos(intencion, integer);
+
+create type intencion_nueva as enum ('match', 'estudio');
+
+alter table profile_intenciones
+  alter column intencion type intencion_nueva
+  using (case intencion::text when 'citas' then 'match' else intencion::text end)::intencion_nueva;
+
+alter table swipes
+  alter column intencion type intencion_nueva
+  using (case intencion::text when 'citas' then 'match' else intencion::text end)::intencion_nueva;
+
+alter table matches
+  alter column intencion type intencion_nueva
+  using (case intencion::text when 'citas' then 'match' else intencion::text end)::intencion_nueva;
+
+drop type intencion;
+alter type intencion_nueva rename to intencion;
+
+-- ============================================================
+-- 3. Feed con las reglas nuevas
+-- ============================================================
+-- Cambia respecto de 0002:
+--   - El filtro de género ya no usa `busca_generos`: en `match` la regla es
+--     dura, no una preferencia. La columna queda en la tabla por si alguna vez
+--     se vuelve a un sistema de preferencias, pero hoy no se lee.
+--   - `estudio` exige misma carrera. Quien no tenga carrera cargada no ve a
+--     nadie en esa lente; el front lo avisa en el estado vacío.
+
+create or replace function get_candidatos(
+  p_intencion intencion,
+  p_limite integer default 20
+)
+returns table (
+  id uuid,
+  nombre text,
+  edad integer,
+  bio text,
+  carrera text,
+  sede text,
+  anio_ingreso smallint,
+  materias_en_comun integer
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    cand.cand_id,
+    cand.cand_nombre,
+    cand.cand_edad,
+    cand.cand_bio,
+    cand.cand_carrera,
+    cand.cand_sede,
+    cand.cand_anio,
+    cand.cand_materias
+  from (
+    select
+      p.id as cand_id,
+      p.nombre as cand_nombre,
+      extract(year from age(p.fecha_nacimiento))::integer as cand_edad,
+      p.bio as cand_bio,
+      c.nombre as cand_carrera,
+      s.nombre as cand_sede,
+      p.anio_ingreso as cand_anio,
+      (
+        select count(*)::integer
+        from profile_materias pm_yo
+        join profile_materias pm_otro
+          on pm_otro.materia_id = pm_yo.materia_id
+        where pm_yo.profile_id = yo.yo_id
+          and pm_otro.profile_id = p.id
+      ) as cand_materias,
+      p.ultima_actividad as cand_actividad
+    from profiles p
+    cross join (
+      select
+        profiles.id as yo_id,
+        profiles.genero as yo_genero,
+        profiles.carrera_id as yo_carrera,
+        profiles.fecha_nacimiento as yo_nacimiento,
+        profiles.edad_min as yo_edad_min,
+        profiles.edad_max as yo_edad_max
+      from profiles
+      where profiles.id = auth.uid()
+    ) yo
+    left join carreras c on c.id = p.carrera_id
+    left join sedes s on s.id = p.sede_id
+    where p.id <> yo.yo_id
+      and p.activo
+      and p.onboarding_completo
+      -- comparte la intención buscada
+      and exists (
+        select 1 from profile_intenciones pi
+        where pi.profile_id = p.id and pi.intencion = p_intencion
+      )
+      -- todavía no lo swipeé para esta intención
+      and not exists (
+        select 1 from swipes sw
+        where sw.emisor_id = yo.yo_id
+          and sw.receptor_id = p.id
+          and sw.intencion = p_intencion
+      )
+      -- sin bloqueos en ninguna dirección
+      and not exists (
+        select 1 from bloqueos b
+        where (b.bloqueador_id = yo.yo_id and b.bloqueado_id = p.id)
+           or (b.bloqueador_id = p.id and b.bloqueado_id = yo.yo_id)
+      )
+      -- MATCH: nadie de tu mismo género.
+      --
+      -- Se expresa como "distinto" y no como "el opuesto exacto" a propósito.
+      -- Con cuatro géneros posibles, el opuesto exacto solo está definido para
+      -- masculino y femenino: quien se anote como no binario u otro no vería a
+      -- nadie y nadie lo vería, o sea que la app le quedaría rota. Así, un
+      -- usuario masculino ve femenino, no binario y otro.
+      --
+      -- Si lo querés estrictamente binario, reemplazá esta condición por:
+      --   and (p_intencion <> 'match' or (
+      --         (yo.yo_genero = 'masculino' and p.genero = 'femenino') or
+      --         (yo.yo_genero = 'femenino'  and p.genero = 'masculino')))
+      and (p_intencion <> 'match' or p.genero <> yo.yo_genero)
+      -- ESTUDIO: solo tu misma carrera.
+      and (
+        p_intencion <> 'estudio'
+        or (yo.yo_carrera is not null and p.carrera_id = yo.yo_carrera)
+      )
+      -- rango etario mutuo
+      and extract(year from age(p.fecha_nacimiento))::int
+          between yo.yo_edad_min and yo.yo_edad_max
+      and extract(year from age(yo.yo_nacimiento))::int
+          between p.edad_min and p.edad_max
+  ) cand
+  order by
+    case when p_intencion = 'estudio' then cand.cand_materias else 0 end desc,
+    cand.cand_actividad desc
+  limit p_limite;
+$$;
+
+-- ============================================================
+-- 4. Volver a crear las funciones que se guardaron en el paso 2
+-- ============================================================
+-- Se reemplaza 'citas' por 'match' dentro del cuerpo por si alguna comparaba
+-- contra el valor viejo. Si alguna mencionaba 'amistad' va a fallar acá, y con
+-- razón: esa intención ya no existe y hay que revisarla a mano.
+
+do $$
+declare
+  r record;
+  cuerpo text;
+begin
+  for r in select firma, definicion from _funcs_guardadas loop
+    cuerpo := replace(r.definicion, '''citas''', '''match''');
+    begin
+      execute cuerpo;
+      raise notice 'Recreada: %', r.firma;
+    exception when others then
+      raise warning 'NO se pudo recrear %: %. Revisala a mano.', r.firma, sqlerrm;
+    end;
+  end loop;
+end $$;
+
+commit;
+
+-- ############################################################
+-- ### migrations/0010_mis_likes_recibidos.sql
+-- ############################################################
+
+-- UADencuentros — quién me dio like
+-- Ejecutar después de 0009.
+--
+-- Esta función ya existía en el proyecto de Supabase pero nunca había quedado
+-- como migración: se creó a mano desde el SQL Editor. Queda registrada acá para
+-- que la base se pueda reconstruir de cero desde `schema_completo.sql`.
+--
+-- Va en SECURITY DEFINER a propósito, y eso contradice a propósito lo que dice
+-- 0003: la RLS de `swipes` esconde quién te dio like hasta que haya match. Esta
+-- función es la excepción deliberada (la pantalla de "ves quién te dio like").
+--
+-- Correcciones respecto de la versión que estaba en producción:
+--   1. FILTRABA MAL LOS BLOQUEOS: al ser SECURITY DEFINER saltea la RLS de
+--      `profiles`, así que quien te bloqueó seguía apareciendo en tu lista de
+--      likes recibidos. Ahora se filtra con hay_bloqueo() en las dos
+--      direcciones, igual que hace get_candidatos().
+--   2. No excluía perfiles dados de baja ni a medio registrar.
+
+create or replace function mis_likes_recibidos()
+returns table (
+  emisor_id uuid,
+  nombre text,
+  intencion intencion,
+  recibido_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select s.emisor_id, p.nombre, s.intencion, s.created_at
+  from swipes s
+  join profiles p on p.id = s.emisor_id
+  where s.receptor_id = auth.uid()
+    and s.direccion = 'like'
+    -- todavía no le respondí
+    and not exists (
+      select 1 from swipes mio
+      where mio.emisor_id = auth.uid()
+        and mio.receptor_id = s.emisor_id
+        and mio.intencion = s.intencion
+    )
+    -- que siga siendo alguien visible
+    and p.activo
+    and p.onboarding_completo
+    -- y que no haya bloqueo en ninguna de las dos direcciones
+    and not hay_bloqueo(p.id)
+  order by s.created_at desc
+$$;
 
 -- ############################################################
 -- ### seed.sql
@@ -1005,3 +1315,4 @@ on conflict (nombre) do nothing;
 -- Las materias van vacías a propósito: conviene cargarlas por carrera cuando
 -- definamos el flujo de "buscar compañero de estudio", para no llenar la tabla
 -- con un plan de estudios que quizás no usemos.
+

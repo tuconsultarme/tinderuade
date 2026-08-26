@@ -3,8 +3,6 @@ interface Props {
   onLike: () => void
   etiquetaLike: string
   deshabilitado?: boolean
-  /** Sin handler, el botón de deshacer ni aparece: no hay nada que deshacer. */
-  onDeshacer?: () => void
 }
 
 /**
@@ -12,54 +10,15 @@ interface Props {
  * anillo pintados del color de cada acción, y una sombra suave que los levanta
  * del fondo. Para quien no quiere arrastrar (y para quien navega con teclado).
  *
- * Deshacer (amarillo) · Pasar (rojo) · Me gusta (verde).
+ * Pasar (rojo) · Me gusta (verde). Una decisión tomada no se vuelve atrás.
  */
-export function Acciones({
-  onPass,
-  onLike,
-  etiquetaLike,
-  deshabilitado = false,
-  onDeshacer,
-}: Props) {
+export function Acciones({ onPass, onLike, etiquetaLike, deshabilitado = false }: Props) {
   return (
-    <div className="relative shrink-0 flex items-center justify-center gap-6 py-4">
-      {/* Deshacer va absoluto a la izquierda: así la cruz y el corazón quedan
-          siempre centrados, aparezca o no el botón de deshacer. */}
-      {onDeshacer && (
-        <div className="absolute left-6 top-1/2 -translate-y-1/2">
-          <BotonAccion
-            onClick={onDeshacer}
-            etiqueta="Deshacer el último swipe"
-            color="var(--color-rewind)"
-            tam="chico"
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-              <path
-                d="M7 10H3V6"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M3.5 14a9 9 0 1 0 2.2-8.8L3 10"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </BotonAccion>
-        </div>
-      )}
-
+    <div className="shrink-0 flex items-center justify-center gap-6 py-4">
       <BotonAccion
         onClick={onPass}
         etiqueta="Pasar"
         color="var(--color-nope)"
-        tam="grande"
         deshabilitado={deshabilitado}
       >
         <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
@@ -77,7 +36,6 @@ export function Acciones({
         onClick={onLike}
         etiqueta={etiquetaLike}
         color="var(--color-like)"
-        tam="grande"
         deshabilitado={deshabilitado}
       >
         <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
@@ -98,20 +56,11 @@ interface BotonAccionProps {
   onClick: () => void
   etiqueta: string
   color: string
-  tam: 'chico' | 'grande'
   deshabilitado?: boolean
   children: React.ReactNode
 }
 
-function BotonAccion({
-  onClick,
-  etiqueta,
-  color,
-  tam,
-  deshabilitado = false,
-  children,
-}: BotonAccionProps) {
-  const medida = tam === 'grande' ? 'w-16 h-16' : 'w-12 h-12'
+function BotonAccion({ onClick, etiqueta, color, deshabilitado = false, children }: BotonAccionProps) {
   return (
     <button
       type="button"
@@ -120,7 +69,7 @@ function BotonAccion({
       aria-label={etiqueta}
       style={{ color, borderColor: color }}
       className={[
-        medida,
+        'w-16 h-16',
         'grid place-items-center rounded-full border-2 bg-papel sombra-boton',
         'transition-transform duration-150 active:scale-90',
         'disabled:opacity-30 disabled:pointer-events-none',

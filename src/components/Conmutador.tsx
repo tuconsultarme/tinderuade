@@ -9,6 +9,9 @@ interface Props {
   onCambio: (m: Intencion) => void
   /** Id del panel que controla, para la relación aria de las pestañas. */
   panelId: string
+  /** Las lentes que la persona marcó en su perfil. Con una sola no hay nada
+   *  que conmutar y se muestra una etiqueta fija en vez del selector. */
+  disponibles: Intencion[]
 }
 
 /**
@@ -23,13 +26,15 @@ interface Props {
  * las flechas y un solo tab lo saltea entero, que es como se espera que
  * funcione un selector de vistas.
  */
-export function Conmutador({ modo, onCambio, panelId }: Props) {
+export function Conmutador({ modo, onCambio, panelId, disponibles }: Props) {
   const pista = useRef<HTMLDivElement>(null)
   const pastilla = useRef<HTMLSpanElement>(null)
   const botones = useRef<(HTMLButtonElement | null)[]>([])
   const reducido = useMovimientoReducido()
 
-  const indice = INTENCIONES.findIndex((i) => i.id === modo)
+  // Se respeta el orden de INTENCIONES y no el que venga de la base.
+  const lentes = INTENCIONES.filter((i) => disponibles.includes(i.id))
+  const indice = lentes.findIndex((i) => i.id === modo)
 
   // La pastilla se posiciona midiendo el botón activo en vez de con un
   // translateX del 33%: las tres etiquetas no miden lo mismo y con porcentajes
@@ -86,15 +91,27 @@ export function Conmutador({ modo, onCambio, panelId }: Props) {
 
   function alTeclado(e: React.KeyboardEvent) {
     let siguiente: number | null = null
-    if (e.key === 'ArrowRight') siguiente = (indice + 1) % INTENCIONES.length
-    if (e.key === 'ArrowLeft') siguiente = (indice - 1 + INTENCIONES.length) % INTENCIONES.length
+    if (e.key === 'ArrowRight') siguiente = (indice + 1) % lentes.length
+    if (e.key === 'ArrowLeft') siguiente = (indice - 1 + lentes.length) % lentes.length
     if (e.key === 'Home') siguiente = 0
-    if (e.key === 'End') siguiente = INTENCIONES.length - 1
+    if (e.key === 'End') siguiente = lentes.length - 1
     if (siguiente === null) return
 
     e.preventDefault()
-    onCambio(INTENCIONES[siguiente].id)
+    onCambio(lentes[siguiente].id)
     botones.current[siguiente]?.focus()
+  }
+
+  if (lentes.length <= 1) {
+    const unica = lentes[0]
+    if (!unica) return null
+    return (
+      <div className="mx-4 flex justify-center">
+        <span className="px-6 py-2 rounded-full gradiente text-papel-fija text-xs font-bold uppercase tracking-wide">
+          {unica.etiqueta}
+        </span>
+      </div>
+    )
   }
 
   return (
@@ -111,7 +128,7 @@ export function Conmutador({ modo, onCambio, panelId }: Props) {
         className="absolute top-1 bottom-1 left-0 rounded-full gradiente sombra-boton pointer-events-none"
       />
 
-      {INTENCIONES.map((intencion, i) => {
+      {lentes.map((intencion, i) => {
         const activo = intencion.id === modo
         return (
           <button

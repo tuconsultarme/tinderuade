@@ -66,7 +66,7 @@ export function Privacidad() {
             <li>Mail y contraseña, para tu cuenta.</li>
             <li>Nombre, fecha de nacimiento y género.</li>
             <li>Al menos una foto (hasta 6).</li>
-            <li>Con qué intención usás la app: citas, amistad o estudio.</li>
+            <li>Con qué intención usás la app: match o estudio.</li>
           </ul>
           <p className="mt-2">Opcional, si lo cargás vos:</p>
           <ul className="list-disc pl-5 mt-2 flex flex-col gap-1">

@@ -26,7 +26,7 @@ export function MiPerfil() {
 }
 
 function FormularioPerfil() {
-  const { sesion, perfil, refrescarPerfil, salir } = useSesion()
+  const { sesion, perfil, intenciones: intencionesGuardadas, refrescarPerfil, salir } = useSesion()
   const userId = sesion!.user.id
   const datos = perfil!
   const { fotos, urls, cargando: cargandoFotos, refrescar } = useMisFotos(userId)
@@ -40,24 +40,13 @@ function FormularioPerfil() {
   const [instagram, setInstagram] = useState(datos.instagram ?? '')
   const [edadMin, setEdadMin] = useState(String(datos.edad_min))
   const [edadMax, setEdadMax] = useState(String(datos.edad_max))
-  const [intenciones, setIntenciones] = useState<Intencion[]>([])
+  // Arranca con lo que ya tiene el contexto: el formulario se monta con el
+  // perfil cargado (ver el guardián de arriba), así que no hace falta un
+  // efecto que las siembre después.
+  const [intenciones, setIntenciones] = useState<Intencion[]>(intencionesGuardadas)
 
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let vigente = true
-    supabase
-      .from('profile_intenciones')
-      .select('intencion')
-      .eq('profile_id', userId)
-      .then(({ data }) => {
-        if (vigente) setIntenciones((data ?? []).map((r) => r.intencion as Intencion))
-      })
-    return () => {
-      vigente = false
-    }
-  }, [userId])
 
   // La carrera guardada no trae su facultad: se busca en el catálogo apenas
   // llega, una sola vez, para que el combo de Carrera arranque ya filtrado.

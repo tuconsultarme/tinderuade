@@ -17,16 +17,21 @@
    | 4 | `migrations/0004_storage.sql` | Bucket privado de fotos y sus políticas |
    | 5 | `migrations/0005_reordenar_fotos.sql` | Función para reordenar el carrusel de fotos |
    | 6 | `migrations/0006_visibilidad_fotos_bloqueos.sql` | Cierra un bypass: fotos, intenciones y materias ahora respetan bloqueos y perfiles inactivos, igual que ya hacía `profiles` |
-   | 7 | `migrations/0007_deshacer_swipe.sql` | Permite borrar el propio swipe, para el botón de "deshacer" del mazo |
-   | 8 | `seed.sql` | Sedes y carreras de UADE |
+   | 7 | `migrations/0007_deshacer_swipe.sql` | Permite borrar el propio swipe. Quedó **sin uso**: el botón de "deshacer" se sacó del mazo el 2026-08-25 |
+   | 8 | `migrations/0008_chat_rico.sql` | Imágenes y respuestas en el chat |
+   | 9 | `migrations/0009_dos_intenciones.sql` | De tres intenciones a dos: `match` (distinto género) y `estudio` (misma carrera) |
+   | 10 | `migrations/0010_mis_likes_recibidos.sql` | Función "quién me dio like", con el filtro de bloqueos corregido |
+   | 11 | `seed.sql` | Sedes y carreras de UADE |
 
-   > **Si la base ya estaba creada antes del front:** faltan la `0005`, la
-   > `0006` y la `0007`. Pegá esos tres archivos en el SQL Editor, en ese
-   > orden. Sin la `0005`, "hacer principal" y borrar fotos del perfil fallan.
-   > Sin la `0006`, alguien que te bloqueó puede seguir viendo tus fotos
-   > pidiéndolas por API directo, aunque en la app no te aparezca más. Sin la
-   > `0007`, el botón de "deshacer" del mazo tira error porque la base no
-   > deja borrar swipes. El resto anda igual sin ninguna de las tres.
+   > **Si la base viene de antes:** aplicá las que te falten, en orden. Cada
+   > una es independiente y se puede correr sola.
+   >
+   > La `0009` **borra datos**: los matches de la vieja intención `amistad` y
+   > sus conversaciones se van. También renombra `citas` a `match`.
+   >
+   > La `0010` corrige un bug de privacidad: la versión que estaba en
+   > producción mostraba en "quién me dio like" a gente que te había
+   > bloqueado, porque al ser `SECURITY DEFINER` saltea la RLS de `profiles`.
 
 3. En **Project Settings → API**, copiar y guardar:
    - Project URL
@@ -42,7 +47,7 @@
 
 ## Tests
 
-23 tests contra PostgreSQL 16 local, con stubs que imitan lo que aporta Supabase
+28 tests contra PostgreSQL 16 local, con stubs que imitan lo que aporta Supabase
 (`auth.uid()`, `auth.users`, `storage.objects`, la publicación de Realtime).
 
 - `tests/test_logica.sql` (17): mayoría de edad, creación de match recíproco,
@@ -50,6 +55,10 @@
   bidireccional y siete casos de RLS.
 - `tests/test_fotos.sql` (6): reordenamiento del carrusel, rechazo de fotos
   ajenas, rechazo de subconjuntos y tope de 6 fotos.
+- `tests/test_dos_intenciones.sql` (7): que `match` no muestre tu mismo género,
+  que `estudio` exija misma carrera, y que el enum viejo ya no se acepte.
+- `tests/test_likes_recibidos.sql` (5): quién te dio like, que desaparezca al
+  responderle, y que los bloqueos lo filtren en las dos direcciones.
 
 Se corren sobre `schema_completo.sql`, así que además verifican que el archivo
 que se pega en el SQL Editor esté bien armado.
@@ -69,7 +78,9 @@ psql -h 127.0.0.1 -p 55433 -U postgres -d uadetest -v ON_ERROR_STOP=1 \
   -f schema_completo.sql
 psql -h 127.0.0.1 -p 55433 -U postgres -d uadetest \
   -f tests/test_logica.sql \
-  -f tests/test_fotos.sql
+  -f tests/test_fotos.sql \
+  -f tests/test_dos_intenciones.sql \
+  -f tests/test_likes_recibidos.sql
 
 pg_ctl -D /tmp/uadepg stop
 ```

@@ -1,4 +1,4 @@
-import type { CandidatoConFotos, Intencion, MatchConPerfil, Mensaje, Perfil } from './tipos'
+import type { CandidatoConFotos, Genero, Intencion, MatchConPerfil, Mensaje, Perfil } from './tipos'
 
 /**
  * MODO DEMO — para ver la app sin base de datos ni cuentas.
@@ -56,7 +56,12 @@ function fotos(nombre: string, cantidad: number): string[] {
 interface FichaDemo extends Omit<CandidatoConFotos, 'materias_en_comun'> {
   intenciones: Intencion[]
   materias: number
+  /** Hace falta para reproducir el filtro de `match` (no mostrar tu género). */
+  genero: Genero
 }
+
+/** Carrera del perfil de prueba. Define a quién ves en la lente de estudio. */
+const MI_CARRERA = 'Ingeniería en Informática'
 
 const GENTE: FichaDemo[] = [
   {
@@ -68,7 +73,8 @@ const GENTE: FichaDemo[] = [
     sede: 'Monserrat',
     anio_ingreso: 2023,
     fotos: fotos('Sofía', 3),
-    intenciones: ['citas', 'amistad'],
+    intenciones: ['match'],
+    genero: 'femenino',
     materias: 0,
   },
   {
@@ -80,7 +86,8 @@ const GENTE: FichaDemo[] = [
     sede: 'Monserrat',
     anio_ingreso: 2021,
     fotos: fotos('Tomás', 2),
-    intenciones: ['amistad', 'estudio'],
+    intenciones: ['match', 'estudio'],
+    genero: 'masculino',
     materias: 3,
   },
   {
@@ -88,11 +95,12 @@ const GENTE: FichaDemo[] = [
     nombre: 'Delfina',
     edad: 20,
     bio: 'Contador Público. Rindo Análisis Matemático II en dos semanas y necesito con quién sufrirlo.',
-    carrera: 'Contador Público',
+    carrera: 'Ingeniería en Informática',
     sede: 'Belgrano',
     anio_ingreso: 2024,
     fotos: fotos('Delfina', 4),
-    intenciones: ['estudio', 'citas'],
+    intenciones: ['match', 'estudio'],
+    genero: 'femenino',
     materias: 2,
   },
   {
@@ -104,7 +112,8 @@ const GENTE: FichaDemo[] = [
     sede: 'Monserrat',
     anio_ingreso: 2022,
     fotos: fotos('Nacho', 2),
-    intenciones: ['citas', 'amistad'],
+    intenciones: ['match'],
+    genero: 'masculino',
     materias: 0,
   },
   {
@@ -112,11 +121,12 @@ const GENTE: FichaDemo[] = [
     nombre: 'Camila',
     edad: 24,
     bio: 'Administración de Empresas, última materia. Café, running en los bosques y planes tranquilos.',
-    carrera: 'Administración de Empresas',
+    carrera: 'Ingeniería en Informática',
     sede: 'Belgrano',
     anio_ingreso: 2020,
     fotos: fotos('Camila', 3),
-    intenciones: ['citas', 'estudio'],
+    intenciones: ['match', 'estudio'],
+    genero: 'femenino',
     materias: 1,
   },
   {
@@ -124,11 +134,12 @@ const GENTE: FichaDemo[] = [
     nombre: 'Bauti',
     edad: 21,
     bio: 'Ingeniería Industrial. Juego al fútbol 5 los martes y siempre falta uno.',
-    carrera: 'Ingeniería Industrial',
+    carrera: 'Ingeniería en Informática',
     sede: 'Monserrat',
     anio_ingreso: 2023,
     fotos: fotos('Bauti', 2),
-    intenciones: ['amistad', 'estudio'],
+    intenciones: ['match', 'estudio'],
+    genero: 'masculino',
     materias: 4,
   },
   {
@@ -136,11 +147,12 @@ const GENTE: FichaDemo[] = [
     nombre: 'Juli',
     edad: 22,
     bio: 'Psicología. Me gusta cocinar para mucha gente y que sobre comida.',
-    carrera: 'Psicología',
+    carrera: 'Ingeniería en Informática',
     sede: 'Belgrano',
     anio_ingreso: 2022,
     fotos: fotos('Juli', 3),
-    intenciones: ['citas', 'amistad', 'estudio'],
+    intenciones: ['match', 'estudio'],
+    genero: 'femenino',
     materias: 1,
   },
   {
@@ -148,18 +160,29 @@ const GENTE: FichaDemo[] = [
     nombre: 'Fede',
     edad: 25,
     bio: 'Abogacía, cursando de noche porque trabajo. Busco compañeros para la final de Procesal.',
-    carrera: 'Abogacía',
+    carrera: 'Ingeniería en Informática',
     sede: 'Monserrat',
     anio_ingreso: 2019,
     fotos: fotos('Fede', 2),
     intenciones: ['estudio'],
+    genero: 'masculino',
     materias: 5,
   },
 ]
 
 /** Candidatos de una lente, con las materias en común ya resueltas. */
+/**
+ * Reproduce los mismos filtros que `get_candidatos()` en la base, para que el
+ * demo no muestre gente que en la app real no aparecería:
+ *   match   → nadie de tu mismo género
+ *   estudio → solo tu misma carrera
+ */
 export function candidatosDemo(modo: Intencion): CandidatoConFotos[] {
-  return GENTE.filter((f) => f.intenciones.includes(modo)).map((f) => ({
+  return GENTE.filter((f) => {
+    if (!f.intenciones.includes(modo)) return false
+    if (modo === 'match') return f.genero !== PERFIL_DEMO.genero
+    return f.carrera === MI_CARRERA
+  }).map((f) => ({
     id: f.id,
     nombre: f.nombre,
     edad: f.edad,
@@ -179,14 +202,17 @@ export function candidatosDemo(modo: Intencion): CandidatoConFotos[] {
 
 export const MI_ID_DEMO = 'demo-yo'
 
+/** Las lentes del perfil de prueba. Con las dos, el conmutador se ve entero. */
+export const INTENCIONES_DEMO: Intencion[] = ['match', 'estudio']
+
 export const PERFIL_DEMO: Perfil = {
   id: MI_ID_DEMO,
   nombre: 'Vos',
   fecha_nacimiento: '2003-04-12',
-  genero: 'otro',
+  genero: 'masculino',
   busca_generos: [],
   bio: 'Este es el perfil de prueba del modo demo.',
-  carrera_id: null,
+  carrera_id: 1, // Ingeniería en Informática, ver MI_CARRERA
   sede_id: null,
   anio_ingreso: 2022,
   instagram: 'tuusuario',
@@ -266,13 +292,6 @@ export function registrarLikeDemo(otroId: string, intencion: Intencion): string 
     mensajesDemo.set(id, [])
   }
   return id
-}
-
-/** Deshace el conteo de un "me gusta" para que la cuenta hacia el próximo
- *  match demo quede como si nunca se hubiera dado. Solo se llama cuando ESE
- *  like no armó un match (ver "deshacer" en useMazo.ts). */
-export function deshacerLikeDemo(): void {
-  likesDemo = Math.max(0, likesDemo - 1)
 }
 
 export function matchesConPerfilDemo(): MatchConPerfil[] {

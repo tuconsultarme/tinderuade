@@ -8,16 +8,18 @@ insert into auth.users (id, email) values
   ('22222222-2222-2222-2222-222222222222', 'beto@test.com'),
   ('33333333-3333-3333-3333-333333333333', 'caro@test.com');
 
+-- Nota: busca_generos se conserva en la tabla pero desde la 0009 el feed no lo
+-- lee. En `match` la regla es dura (nadie de tu mismo género).
 insert into profiles (id, nombre, fecha_nacimiento, genero, busca_generos, carrera_id, sede_id, onboarding_completo)
 values
   ('11111111-1111-1111-1111-111111111111', 'Ana',  '2003-04-10', 'femenino',  '{masculino}', 1, 1, true),
   ('22222222-2222-2222-2222-222222222222', 'Beto', '2002-09-01', 'masculino', '{femenino}',  1, 1, true),
-  ('33333333-3333-3333-3333-333333333333', 'Caro', '2004-01-20', 'femenino',  '{femenino}',  2, 1, true);
+  ('33333333-3333-3333-3333-333333333333', 'Caro', '2004-01-20', 'femenino',  '{femenino}',  1, 1, true);
 
 insert into profile_intenciones (profile_id, intencion) values
-  ('11111111-1111-1111-1111-111111111111', 'citas'),
+  ('11111111-1111-1111-1111-111111111111', 'match'),
   ('11111111-1111-1111-1111-111111111111', 'estudio'),
-  ('22222222-2222-2222-2222-222222222222', 'citas'),
+  ('22222222-2222-2222-2222-222222222222', 'match'),
   ('22222222-2222-2222-2222-222222222222', 'estudio'),
   ('33333333-3333-3333-3333-333333333333', 'estudio');
 
@@ -46,13 +48,13 @@ end $$;
 \echo ''
 \echo '=== TEST 2: like unilateral NO crea match ==='
 insert into swipes (emisor_id, receptor_id, direccion, intencion)
-values ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222','like','citas');
+values ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222','like','match');
 select count(*) as matches_esperado_0 from matches;
 
 \echo ''
 \echo '=== TEST 3: like reciproco SI crea match ==='
 insert into swipes (emisor_id, receptor_id, direccion, intencion)
-values ('22222222-2222-2222-2222-222222222222','11111111-1111-1111-1111-111111111111','like','citas');
+values ('22222222-2222-2222-2222-222222222222','11111111-1111-1111-1111-111111111111','like','match');
 select count(*) as matches_esperado_1, min(intencion::text) as intencion from matches;
 
 \echo ''
@@ -71,20 +73,21 @@ select count(*) as matches_esperado_2 from matches;
 do $$
 begin
   insert into swipes (emisor_id, receptor_id, direccion, intencion)
-  values ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222','pass','citas');
+  values ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222','pass','match');
   raise exception 'FALLO: permitio swipe duplicado';
 exception when unique_violation then
   raise notice 'OK: swipe duplicado rechazado';
 end $$;
 
 \echo ''
-\echo '=== TEST 7: feed de citas para Caro (busca femenino, Ana busca masculino) ==='
-\echo '--- esperado: vacio, la preferencia de genero no es mutua'
+\echo '=== TEST 7: MATCH no muestra gente del mismo genero ==='
+\echo '--- Caro es femenino; esperado: solo Beto (Ana queda afuera por ser femenino)'
 set request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
-select nombre from get_candidatos('citas', 10);
+select coalesce(string_agg(nombre, ', ' order by nombre), '(vacio)') as feed_match_caro
+from get_candidatos('match', 10);
 
 \echo ''
-\echo '=== TEST 8: feed de estudio para Caro ==='
+\echo '=== TEST 8: feed de estudio para Caro (misma carrera) ==='
 \echo '--- esperado: Ana y Beto, ambos con 1 materia en comun, sin filtro de genero'
 select nombre, edad, carrera, materias_en_comun from get_candidatos('estudio', 10);
 
@@ -149,7 +152,7 @@ reset role;
 do $$
 begin
   insert into swipes (emisor_id, receptor_id, direccion, intencion)
-  values ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-111111111111','like','citas');
+  values ('11111111-1111-1111-1111-111111111111','11111111-1111-1111-1111-111111111111','like','match');
   raise exception 'FALLO: permitio autoswipe';
 exception when check_violation then
   raise notice 'OK: autoswipe rechazado';
@@ -182,12 +185,12 @@ set role authenticated;
 delete from swipes
 where emisor_id = '11111111-1111-1111-1111-111111111111'
   and receptor_id = '22222222-2222-2222-2222-222222222222'
-  and intencion = 'citas';
+  and intencion = 'match';
 reset role;
 select count(*) as swipe_sigue_existiendo from swipes
 where emisor_id = '11111111-1111-1111-1111-111111111111'
   and receptor_id = '22222222-2222-2222-2222-222222222222'
-  and intencion = 'citas';
+  and intencion = 'match';
 \echo '--- (tiene que dar 1: Caro no pudo tocar un swipe ajeno)'
 
 \echo ''
@@ -197,10 +200,10 @@ set role authenticated;
 delete from swipes
 where emisor_id = '11111111-1111-1111-1111-111111111111'
   and receptor_id = '22222222-2222-2222-2222-222222222222'
-  and intencion = 'citas';
+  and intencion = 'match';
 reset role;
 select count(*) as swipe_borrado from swipes
 where emisor_id = '11111111-1111-1111-1111-111111111111'
   and receptor_id = '22222222-2222-2222-2222-222222222222'
-  and intencion = 'citas';
+  and intencion = 'match';
 \echo '--- (tiene que dar 0: Ana si pudo borrar el suyo)'

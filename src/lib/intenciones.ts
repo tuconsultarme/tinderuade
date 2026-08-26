@@ -1,10 +1,13 @@
 import type { Intencion } from './tipos'
 
 /**
- * Las tres lentes de la app. El conmutador cambia entre ellas y con eso cambia
- * el acento, la composición de la card y qué datos se ponen adelante.
+ * Las dos lentes de la app. El conmutador cambia entre ellas y con eso cambia
+ * el acento, la composición de la card y a quién te muestra el mazo.
  *
- * `campo` es el token de color; el CSS lo aplica vía [data-modo] en la raíz.
+ * El filtro de cada lente lo aplica `get_candidatos()` en la base (migración
+ * 0009), no el cliente:
+ *   match   → gente que no es de tu mismo género
+ *   estudio → gente de tu misma carrera
  */
 export interface DefIntencion {
   id: Intencion
@@ -22,26 +25,19 @@ export interface DefIntencion {
 
 export const INTENCIONES: DefIntencion[] = [
   {
-    id: 'citas',
-    etiqueta: 'Citas',
-    titulo: 'Gente para salir',
-    vacio: 'Por ahora no hay nadie más para mostrarte acá. Probá con otra lente o volvé más tarde.',
+    id: 'match',
+    etiqueta: 'Match',
+    titulo: 'Gente para conocer',
+    vacio: 'Por ahora no hay nadie más para mostrarte. Probá con Estudio o volvé más tarde.',
     like: 'Me gusta',
     match: 'también te dio like.',
   },
   {
-    id: 'amistad',
-    etiqueta: 'Amistad',
-    titulo: 'Gente para juntarse',
-    vacio: 'Se te acabó la gente en amistad. Volvé en un rato, siempre entra alguien nuevo.',
-    like: 'Buena onda',
-    match: 'también tiene ganas de juntarse.',
-  },
-  {
     id: 'estudio',
     etiqueta: 'Estudio',
-    titulo: 'Gente para estudiar',
-    vacio: 'No hay más compañeros de estudio por ahora. Cargá las materias que cursás para que aparezcan más.',
+    titulo: 'Gente de tu carrera',
+    vacio:
+      'No hay más gente de tu carrera por ahora. Fijate que tengas la carrera cargada en tu perfil: sin eso, acá no aparece nadie.',
     like: 'Le entro',
     match: 'también quiere estudiar con vos.',
   },

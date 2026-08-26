@@ -19,9 +19,9 @@ const Ctx = createContext<ValorModo | null>(null)
 export function ProveedorModo({ children }: { children: ReactNode }) {
   const [modo, setModoEstado] = useState<Intencion>(() => {
     const guardado = localStorage.getItem(CLAVE)
-    return guardado === 'citas' || guardado === 'amistad' || guardado === 'estudio'
+    return guardado === 'match' || guardado === 'estudio'
       ? guardado
-      : 'citas'
+      : 'match'
   })
 
   useEffect(() => {

@@ -2,8 +2,8 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { MODO_DEMO, MI_ID_DEMO, PERFIL_DEMO } from '@/lib/demo'
-import type { Perfil } from '@/lib/tipos'
+import { MODO_DEMO, MI_ID_DEMO, PERFIL_DEMO, INTENCIONES_DEMO } from '@/lib/demo'
+import type { Intencion, Perfil } from '@/lib/tipos'
 
 /**
  * Sesión falsa para el modo demo. Se arma acá, en un solo lugar, para que todo
@@ -16,6 +16,11 @@ const SESION_DEMO = {
 interface ValorSesion {
   sesion: Session | null
   perfil: Perfil | null
+  /**
+   * Las lentes que la persona marcó en su perfil. El mazo solo ofrece estas:
+   * si marcaste únicamente Estudio, el conmutador no muestra Match.
+   */
+  intenciones: Intencion[]
   /** True mientras no sabemos todavía si hay sesión. Evita parpadeos de rutas. */
   cargando: boolean
   refrescarPerfil: () => Promise<void>
@@ -27,6 +32,7 @@ const Ctx = createContext<ValorSesion | null>(null)
 export function ProveedorSesion({ children }: { children: ReactNode }) {
   const [sesion, setSesion] = useState<Session | null>(MODO_DEMO ? SESION_DEMO : null)
   const [perfil, setPerfil] = useState<Perfil | null>(MODO_DEMO ? PERFIL_DEMO : null)
+  const [intenciones, setIntenciones] = useState<Intencion[]>(MODO_DEMO ? INTENCIONES_DEMO : [])
   const [cargando, setCargando] = useState(!MODO_DEMO)
 
   const traerPerfil = useCallback(async (userId: string) => {
@@ -44,6 +50,14 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
       return
     }
     setPerfil((data as Perfil) ?? null)
+
+    // Se piden acá y no en cada pantalla porque las necesitan tanto el mazo
+    // (para saber qué lentes ofrecer) como el perfil (para editarlas).
+    const { data: filas } = await supabase
+      .from('profile_intenciones')
+      .select('intencion')
+      .eq('profile_id', userId)
+    setIntenciones((filas ?? []).map((f) => f.intencion as Intencion))
   }, [])
 
   useEffect(() => {
@@ -67,6 +81,7 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
         await traerPerfil(nuevaSesion.user.id)
       } else {
         setPerfil(null)
+        setIntenciones([])
       }
       setCargando(false)
     })
@@ -84,10 +99,11 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
   const salir = useCallback(async () => {
     await supabase.auth.signOut()
     setPerfil(null)
+    setIntenciones([])
   }, [])
 
   return (
-    <Ctx.Provider value={{ sesion, perfil, cargando, refrescarPerfil, salir }}>
+    <Ctx.Provider value={{ sesion, perfil, intenciones, cargando, refrescarPerfil, salir }}>
       {children}
     </Ctx.Provider>
   )

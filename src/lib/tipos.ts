@@ -4,7 +4,7 @@
  */
 
 export type Genero = 'masculino' | 'femenino' | 'no_binario' | 'otro'
-export type Intencion = 'citas' | 'amistad' | 'estudio'
+export type Intencion = 'match' | 'estudio'
 export type DireccionSwipe = 'like' | 'pass'
 
 export interface Sede {

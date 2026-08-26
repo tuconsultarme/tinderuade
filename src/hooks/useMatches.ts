@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { urlsFirmadas } from '@/lib/fotos'
 import { MODO_DEMO, matchesConPerfilDemo } from '@/lib/demo'
+import { uuid } from '@/lib/uuid'
 import type { Match, MatchConPerfil, Mensaje } from '@/lib/tipos'
 
 /**
@@ -20,7 +21,7 @@ export function useMatches(miId: string | undefined) {
   // si el nuevo canal se creara con el mismo nombre, Supabase reutiliza el que
   // ya estaba suscripto en vez de crear uno nuevo y explota al intentar
   // agregarle callbacks. Un nombre distinto por instancia lo evita del todo.
-  const idCanal = useRef(`matches-y-mensajes-${crypto.randomUUID()}`)
+  const idCanal = useRef(`matches-y-mensajes-${uuid()}`)
 
   const cargar = useCallback(async () => {
     if (MODO_DEMO) {

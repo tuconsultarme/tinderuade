@@ -1,5 +1,6 @@
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase'
 import { VENCIMIENTO_URL_FOTO } from './config'
+import { uuid } from './uuid'
 import type { Foto } from './tipos'
 
 const BUCKET = 'fotos-perfil'
@@ -60,7 +61,7 @@ async function comprimir(file: File, ladoMax = 1440, calidad = 0.82): Promise<Bl
  */
 export async function subirFoto(userId: string, file: File, orden: number): Promise<Foto> {
   const blob = await comprimir(file)
-  const path = `${userId}/${crypto.randomUUID()}.webp`
+  const path = `${userId}/${uuid()}.webp`
   const token = await tokenDeSesion()
 
   const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
@@ -166,7 +167,7 @@ export async function reordenarFotos(ids: string[]): Promise<void> {
  */
 export async function subirImagenChat(matchId: string, file: File): Promise<string> {
   const blob = await comprimir(file)
-  const path = `${matchId}/${crypto.randomUUID()}.webp`
+  const path = `${matchId}/${uuid()}.webp`
   const token = await tokenDeSesion()
 
   const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET_CHAT}/${path}`, {

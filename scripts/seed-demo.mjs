@@ -90,7 +90,7 @@ const GENTE = [
     sede: 'Monserrat',
     anio: 2023,
     bio: 'Curso Multimedial en Monserrat. Siempre estoy organizando algo para el finde. Si sabés dónde comer bien y barato por el centro, contame.',
-    intenciones: ['citas', 'amistad'],
+    intenciones: ['match'],
     fotos: 3,
   },
   {
@@ -102,7 +102,7 @@ const GENTE = [
     sede: 'Monserrat',
     anio: 2021,
     bio: 'Ingeniería Informática, tercer año. Busco gente para armar grupo de TP y, si sale, para ir a ver a Racing.',
-    intenciones: ['amistad', 'estudio'],
+    intenciones: ['match', 'estudio'],
     fotos: 2,
   },
   {
@@ -114,7 +114,7 @@ const GENTE = [
     sede: 'Belgrano',
     anio: 2024,
     bio: 'Contador Público. Rindo Análisis Matemático II en dos semanas y necesito con quién sufrirlo.',
-    intenciones: ['estudio', 'citas'],
+    intenciones: ['match', 'estudio'],
     fotos: 4,
   },
   {
@@ -126,7 +126,7 @@ const GENTE = [
     sede: 'Monserrat',
     anio: 2022,
     bio: 'Comunicación. Toco la guitarra mal pero con ganas. Voy a todos los recitales que puedo.',
-    intenciones: ['citas', 'amistad'],
+    intenciones: ['match'],
     fotos: 2,
   },
   {
@@ -138,7 +138,7 @@ const GENTE = [
     sede: 'Belgrano',
     anio: 2020,
     bio: 'Administración, última materia. Café, running en los bosques y planes tranquilos.',
-    intenciones: ['citas', 'estudio'],
+    intenciones: ['match', 'estudio'],
     fotos: 3,
   },
   {
@@ -150,7 +150,7 @@ const GENTE = [
     sede: 'Monserrat',
     anio: 2023,
     bio: 'Ingeniería Industrial. Juego al fútbol 5 los martes y siempre falta uno.',
-    intenciones: ['amistad', 'estudio'],
+    intenciones: ['match', 'estudio'],
     fotos: 2,
   },
 ]
@@ -186,7 +186,7 @@ async function usuario(mail) {
   salir(`No pude crear ni encontrar el usuario ${mail}: ${JSON.stringify(alta.cuerpo)}`)
 }
 
-async function perfil(id, ficha, cat) {
+async function perfil(id, ficha, cat, carreraForzada) {
   const res = await api('/rest/v1/profiles', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates' },
@@ -198,7 +198,12 @@ async function perfil(id, ficha, cat) {
       // Vacío = sin preferencia de género, así aparecen para cualquiera.
       busca_generos: [],
       bio: ficha.bio,
-      carrera_id: cat.carreras.get(ficha.carrera) ?? null,
+      // Si sabemos tu carrera, los perfiles con intención 'estudio' se anotan
+      // en la misma: si no, esa lente te aparecería siempre vacía.
+      carrera_id:
+        (ficha.intenciones.includes('estudio') ? carreraForzada : null) ??
+        cat.carreras.get(ficha.carrera) ??
+        null,
       sede_id: cat.sedes.get(ficha.sede) ?? null,
       anio_ingreso: ficha.anio,
       edad_min: 18,
@@ -331,10 +336,26 @@ if (cat.carreras.size === 0) {
   console.log('  ! Los catálogos están vacíos. ¿Corriste seed.sql? Sigo igual, sin carrera ni sede.\n')
 }
 
+// Tu carrera, para que los perfiles de estudio la compartan.
+let miCarrera = null
+if (mailDestino) {
+  const busca = await api(`/auth/v1/admin/users?filter=${encodeURIComponent(mailDestino)}`)
+  const vos = (busca.cuerpo?.users ?? []).find((u) => u.email === mailDestino)
+  if (vos) {
+    const perf = await api(`/rest/v1/profiles?id=eq.${vos.id}&select=carrera_id`)
+    miCarrera = perf.cuerpo?.[0]?.carrera_id ?? null
+  }
+  if (!miCarrera) {
+    console.log('  ! No pude leer tu carrera. Los perfiles de Estudio van a quedar')
+    console.log('    en otra carrera y esa lente te va a aparecer vacía.')
+    console.log('    Cargá tu carrera en el perfil y volvé a correr esto.\n')
+  }
+}
+
 const creados = []
 for (const [i, ficha] of GENTE.entries()) {
   const id = await usuario(ficha.mail)
-  await perfil(id, ficha, cat)
+  await perfil(id, ficha, cat, miCarrera)
   const n = await fotos(id, ficha, i)
   creados.push({ id, ficha })
   console.log(`  ✓ ${ficha.nombre.padEnd(9)} ${ficha.intenciones.join(', ').padEnd(18)} ${n > 0 ? `${n} fotos` : 'fotos ya estaban'}`)

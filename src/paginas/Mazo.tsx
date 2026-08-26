@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, useId } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useId } from 'react'
 import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { Flip } from 'gsap/Flip'
@@ -9,6 +9,7 @@ import { MatchOverlay } from '@/components/MatchOverlay'
 import { Cargando, Vacio, Aviso } from '@/components/ui/Estados'
 import { Boton } from '@/components/ui/Boton'
 import { useModo } from '@/context/ModoContext'
+import { useSesion } from '@/context/SesionContext'
 import { useMazo } from '@/hooks/useMazo'
 import { useArrastre } from '@/hooks/useArrastre'
 import { useMovimientoReducido } from '@/hooks/useMovimientoReducido'
@@ -25,7 +26,8 @@ interface MatchNuevo {
 
 export function Mazo() {
   const { modo, setModo } = useModo()
-  const { candidatos, cargando, error, swipear, hayParaDeshacer, deshacer, recargar } =
+  const { intenciones } = useSesion()
+  const { candidatos, cargando, error, swipear, recargar } =
     useMazo(modo)
   const reducido = useMovimientoReducido()
   const navegar = useNavigate()
@@ -33,6 +35,14 @@ export function Mazo() {
 
   const [match, setMatch] = useState<MatchNuevo | null>(null)
   const estadoFlip = useRef<Flip.FlipState | null>(null)
+
+  // Si el modo guardado ya no está entre las lentes marcadas en el perfil
+  // (porque se destildó desde Perfil), se cae a la primera que sí esté. Va en
+  // un efecto y no durante el render porque cambia estado de otro contexto.
+  useEffect(() => {
+    if (intenciones.length === 0) return
+    if (!intenciones.includes(modo)) setModo(intenciones[0])
+  }, [intenciones, modo, setModo])
 
   const arriba = candidatos[0] ?? null
   const siguiente = candidatos[1] ?? null
@@ -85,7 +95,7 @@ export function Mazo() {
     <div className="h-full flex flex-col">
       <header className="shrink-0 pt-3 pb-2">
         <h1 className="sr-only">UADencuentros — {def.titulo}</h1>
-        <Conmutador modo={modo} onCambio={cambiarModo} panelId={panelId} />
+        <Conmutador modo={modo} onCambio={cambiarModo} panelId={panelId} disponibles={intenciones} />
       </header>
 
       <section
@@ -101,6 +111,21 @@ export function Mazo() {
         )}
 
         <div className="relative flex-1 min-h-0 mx-4 my-2">
+          {/* Sin ninguna lente marcada no hay mazo posible. No debería pasar
+              (el perfil exige al menos una), pero si pasa conviene decir dónde
+              se arregla en vez de mostrar una pantalla vacía sin motivo. */}
+          {intenciones.length === 0 ? (
+            <Vacio
+              titulo="Elegí para qué usás la app"
+              detalle="Sin Match ni Estudio marcados no hay a quién mostrarte. Se elige en tu perfil."
+              accion={
+                <Boton variante="fantasma" onClick={() => navegar('/perfil')}>
+                  Ir a mi perfil
+                </Boton>
+              }
+            />
+          ) : (
+            <>
           {cargando && candidatos.length === 0 && <Cargando texto="Buscando gente" />}
 
           {!cargando && !arriba && (
@@ -137,6 +162,8 @@ export function Mazo() {
               onAbrir={() => navegar(`/perfil/${arriba.id}`)}
             />
           )}
+            </>
+          )}
         </div>
 
         {/* Sin card arriba (mazo vacío o cargando) no hay nada que resolver:
@@ -147,7 +174,6 @@ export function Mazo() {
             etiquetaLike={def.like}
             onPass={() => resolverConBoton('pass')}
             onLike={() => resolverConBoton('like')}
-            onDeshacer={hayParaDeshacer && !match ? () => void deshacer() : undefined}
           />
         )}
       </section>

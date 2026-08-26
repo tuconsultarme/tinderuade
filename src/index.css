@@ -28,12 +28,10 @@
   --color-nope: #fe3b5f; /* pasar (rojo) */
   --color-like: #22d07c; /* me gusta (verde) */
   --color-super: #22a6ff; /* super like (azul) */
-  --color-rewind: #ffb800; /* deshacer (amarillo) */
 
   /* Un acento por intención — se conserva el modo de tres lentes, pero en
      paleta Tinder. El color te dice en qué modo estás. */
-  --color-citas: #fd267d;
-  --color-amistad: #ff7854;
+  --color-match: #fd267d;
   --color-estudio: #22a6ff;
 
   --font-display: 'Poppins', ui-sans-serif, system-ui, sans-serif;
@@ -65,13 +63,10 @@ html[data-tema='light'] {
    ============================================================ */
 
 :root {
-  --acento: var(--color-citas);
+  --acento: var(--color-match);
 }
-[data-modo='citas'] {
-  --acento: var(--color-citas);
-}
-[data-modo='amistad'] {
-  --acento: var(--color-amistad);
+[data-modo='match'] {
+  --acento: var(--color-match);
 }
 [data-modo='estudio'] {
   --acento: var(--color-estudio);
@@ -117,6 +112,14 @@ html[data-tema='light'] {
 }
 
 @layer components {
+  /* Ancla de overlays: ver el comentario en AppShell.tsx. El transform no
+     mueve nada, pero convierte a la columna en el bloque contenedor de todo
+     `position: fixed` de adentro, para que los overlays no se escapen al
+     viewport en pantallas anchas. */
+  .columna-ancla {
+    transform: translateZ(0);
+  }
+
   /* Etiqueta de dato: chica, espaciada, en mayúsculas. */
   .dato {
     font-family: var(--font-body);

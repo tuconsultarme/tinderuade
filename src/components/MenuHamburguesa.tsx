@@ -15,13 +15,13 @@ const PLANES: Plan[] = [
   {
     nombre: 'Gratis',
     precio: '$0',
-    beneficios: ['Swipes limitados por día', 'Chat con tus matches', 'Las tres lentes'],
+    beneficios: ['Swipes limitados por día', 'Chat con tus matches', 'Match y Estudio'],
   },
   {
     nombre: 'Plus',
     precio: '$2.500 / mes',
     destacado: true,
-    beneficios: ['Likes ilimitados', 'Deshacer sin límite', 'Sin publicidad'],
+    beneficios: ['Likes ilimitados', 'Sin publicidad', 'Filtros por sede y año'],
   },
   {
     nombre: 'Gold',
@@ -91,7 +91,9 @@ export function MenuHamburguesa() {
         aria-modal="true"
         aria-label="Menú"
         className={[
-          'fixed top-0 right-0 z-50 h-[100dvh] w-[80%] max-w-[320px]',
+          // inset-y-0 en vez de h-[100dvh]: el alto sale de la columna, que es
+          // quien ancla al panel (ver .columna-ancla en AppShell.tsx).
+          'fixed inset-y-0 right-0 z-50 w-[80%] max-w-[320px]',
           'bg-papel border-l border-lapiz flex flex-col',
           'transition-transform duration-300 ease-out',
           abierto ? 'translate-x-0' : 'translate-x-full',

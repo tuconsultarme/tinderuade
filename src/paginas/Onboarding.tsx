@@ -40,7 +40,6 @@ export function Onboarding() {
   const [anioIngreso, setAnioIngreso] = useState('')
   const [intenciones, setIntenciones] = useState<Intencion[]>([])
   const [bio, setBio] = useState('')
-  const [buscaGeneros, setBuscaGeneros] = useState<Genero[]>([])
   const [edadMin, setEdadMin] = useState('18')
   const [edadMax, setEdadMax] = useState('35')
   const [instagram, setInstagram] = useState('')
@@ -64,6 +63,9 @@ export function Onboarding() {
       if (!nacimiento) return 'Falta tu fecha de nacimiento.'
       if (edadDesde(nacimiento) < 18) return 'Tenés que ser mayor de 18 para usar la app.'
       if (!genero) return 'Elegí una opción de género.'
+      // Obligatoria desde la 0009: la lente de Estudio filtra por carrera, así
+      // que sin cargarla esa mitad de la app queda vacía sin explicación.
+      if (!carreraId) return 'Elegí tu carrera: la usamos para mostrarte gente de Estudio.'
     }
     if (paso === 1 && intenciones.length === 0) {
       return 'Elegí al menos una intención. Podés cambiarla cuando quieras.'
@@ -153,7 +155,7 @@ export function Onboarding() {
       .from('profiles')
       .update({
         bio: bio.trim() || null,
-        busca_generos: buscaGeneros,
+        busca_generos: [],
         edad_min: Number(edadMin),
         edad_max: Number(edadMax),
         instagram: instagram.trim() || null,
@@ -246,7 +248,7 @@ export function Onboarding() {
                 onChange={(e) => setCarreraId(e.target.value)}
                 disabled={!facultad}
               >
-                <option value="">{facultad ? 'Prefiero no decir' : 'Elegí tu facultad primero'}</option>
+                <option value="">{facultad ? 'Elegí tu carrera' : 'Elegí tu facultad primero'}</option>
                 {carreras
                   .filter((c) => c.facultad === facultad)
                   .map((c) => (
@@ -322,36 +324,14 @@ export function Onboarding() {
                 ayuda={`${bio.length}/500`}
               />
 
-              <fieldset className="flex flex-col gap-2">
-                <legend className="dato text-grafito mb-1">Querés ver perfiles de</legend>
-                <div className="flex flex-wrap gap-2">
-                  {GENEROS.map((g) => {
-                    const elegido = buscaGeneros.includes(g.valor)
-                    return (
-                      <label
-                        key={g.valor}
-                        className={[
-                          'px-3.5 py-2.5 rounded-chip border-2 cursor-pointer text-sm font-medium',
-                          elegido
-                            ? 'border-tinta bg-[var(--acento)] text-tinta-fija'
-                            : 'border-lapiz text-grafito',
-                        ].join(' ')}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={elegido}
-                          onChange={() => setBuscaGeneros((prev) => alternar(prev, g.valor))}
-                          className="sr-only"
-                        />
-                        {g.etiqueta}
-                      </label>
-                    )
-                  })}
-                </div>
-                <p className="text-sm text-grafito">
-                  Sin marcar nada, ves a todo el mundo. Solo aplica en citas.
-                </p>
-              </fieldset>
+              {/* La preferencia de género se sacó en la migración 0009: ahora
+                  las lentes filtran solas (Match no te muestra tu mismo género,
+                  Estudio solo tu carrera), así que no hay nada que elegir. */}
+              <p className="text-sm text-grafito">
+                En <strong className="text-tinta">Match</strong> te vamos a mostrar gente de otro
+                género. En <strong className="text-tinta">Estudio</strong>, solo gente de tu
+                carrera.
+              </p>
 
               <div className="flex gap-3">
                 <CampoTexto
