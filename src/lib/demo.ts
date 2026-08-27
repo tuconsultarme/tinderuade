@@ -294,6 +294,25 @@ export function registrarLikeDemo(otroId: string, intencion: Intencion): string 
   return id
 }
 
+/* ============================================================
+   Cupo de likes (demo)
+   ============================================================ */
+
+const LIMITE_DEMO = 25
+let likesUsadosDemo = 0
+
+export function cupoDemo() {
+  return {
+    usados: likesUsadosDemo,
+    restantes: Math.max(0, LIMITE_DEMO - likesUsadosDemo),
+    ilimitado: false,
+  }
+}
+
+export function consumirLikeDemo(): void {
+  likesUsadosDemo += 1
+}
+
 export function matchesConPerfilDemo(): MatchConPerfil[] {
   return matchesDemo.map((m) => {
     const otro = GENTE.find((g) => g.id === m.otroId)

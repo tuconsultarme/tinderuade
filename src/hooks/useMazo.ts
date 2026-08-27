@@ -3,14 +3,23 @@ import { supabase } from '@/lib/supabase'
 import { urlsFirmadas } from '@/lib/fotos'
 import { TAMANO_TANDA, UMBRAL_RECARGA } from '@/lib/config'
 import { MODO_DEMO, candidatosDemo, registrarLikeDemo } from '@/lib/demo'
+import { CODIGO_SIN_CUPO } from './useCupo'
 import type { Candidato, CandidatoConFotos, DireccionSwipe, Intencion } from '@/lib/tipos'
+
+/** Qué pasó con un swipe: si armó match y si lo frenó el cupo diario. */
+export interface ResultadoSwipe {
+  matchId: string | null
+  sinCupo: boolean
+}
+
+const SIN_MATCH: ResultadoSwipe = { matchId: null, sinCupo: false }
 
 interface Resultado {
   candidatos: CandidatoConFotos[]
   cargando: boolean
   error: string | null
   /** Registra el swipe y devuelve el id del match si se armó. */
-  swipear: (candidato: CandidatoConFotos, direccion: DireccionSwipe) => Promise<string | null>
+  swipear: (candidato: CandidatoConFotos, direccion: DireccionSwipe) => Promise<ResultadoSwipe>
   recargar: () => void
 }
 
@@ -112,7 +121,7 @@ export function useMazo(modo: Intencion): Resultado {
   }, [traer])
 
   const swipear = useCallback(
-    async (candidato: CandidatoConFotos, direccion: DireccionSwipe): Promise<string | null> => {
+    async (candidato: CandidatoConFotos, direccion: DireccionSwipe): Promise<ResultadoSwipe> => {
       const receptorId = candidato.id
 
       // Sale de la lista antes de que responda la red: el mazo tiene que
@@ -121,13 +130,15 @@ export function useMazo(modo: Intencion): Resultado {
       setCandidatos((prev) => prev.filter((c) => c.id !== receptorId))
 
       if (MODO_DEMO) {
-        const matchId = direccion === 'like' ? registrarLikeDemo(receptorId, modo) : null
-        return matchId
+        return {
+          matchId: direccion === 'like' ? registrarLikeDemo(receptorId, modo) : null,
+          sinCupo: false,
+        }
       }
 
       const { data: sesion } = await supabase.auth.getUser()
       const yo = sesion.user?.id
-      if (!yo) return null
+      if (!yo) return SIN_MATCH
 
       const { error: errSwipe } = await supabase.from('swipes').insert({
         emisor_id: yo,
@@ -137,14 +148,17 @@ export function useMazo(modo: Intencion): Resultado {
       })
 
       if (errSwipe) {
+        // Cupo diario agotado (trigger de la migración 0011). No es un error
+        // a mostrar en rojo: el mazo lo traduce en la pantalla de "sin likes".
+        if (errSwipe.code === CODIGO_SIN_CUPO) return { matchId: null, sinCupo: true }
         // 23505 = unique violation: ya había swipeado a esta persona en esta
         // intención. No es un error que valga la pena mostrar.
         if (errSwipe.code !== '23505') setError(errSwipe.message)
-        return null
+        return SIN_MATCH
       }
 
       if (direccion !== 'like') {
-        return null
+        return SIN_MATCH
       }
 
       // El match lo crea el trigger `crear_match_si_reciproco`. Acá solo se
@@ -159,7 +173,7 @@ export function useMazo(modo: Intencion): Resultado {
         .eq('activo', true)
         .maybeSingle()
 
-      return match?.id ?? null
+      return { matchId: match?.id ?? null, sinCupo: false }
     },
     [modo],
   )

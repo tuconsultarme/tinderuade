@@ -11,6 +11,7 @@ import { Boton } from '@/components/ui/Boton'
 import { useModo } from '@/context/ModoContext'
 import { useSesion } from '@/context/SesionContext'
 import { useMazo } from '@/hooks/useMazo'
+import { useCupo } from '@/hooks/useCupo'
 import { useArrastre } from '@/hooks/useArrastre'
 import { useMovimientoReducido } from '@/hooks/useMovimientoReducido'
 import { definicion } from '@/lib/intenciones'
@@ -27,6 +28,7 @@ interface MatchNuevo {
 export function Mazo() {
   const { modo, setModo } = useModo()
   const { intenciones } = useSesion()
+  const { cupo, sinCupo, consumir, refrescar: refrescarCupo } = useCupo()
   const { candidatos, cargando, error, swipear, recargar } =
     useMazo(modo)
   const reducido = useMovimientoReducido()
@@ -50,14 +52,28 @@ export function Mazo() {
   const { card, capaLike, capaPass, resolverConBoton } = useArrastre({
     onResolver: (direccion) => void resolver(direccion),
     deshabilitado: !arriba || Boolean(match),
+    // Sin cupo el arrastre a la derecha vuelve a su lugar en vez de resolver.
+    // El pass sigue disponible: descartar no consume nada.
+    bloquearLike: sinCupo,
     reducido,
   })
 
   async function resolver(direccion: DireccionSwipe) {
     if (!arriba) return
     const candidato = arriba
-    const matchId = await swipear(candidato, direccion)
-    if (matchId) setMatch({ matchId, candidato, intencion: modo })
+    if (direccion === 'like') {
+      if (sinCupo) return
+      consumir()
+    }
+
+    const res = await swipear(candidato, direccion)
+    if (res.sinCupo) {
+      // La base rechazó el like: el contador local estaba desactualizado
+      // (otra pestaña, otro dispositivo). Se resincroniza con la verdad.
+      void refrescarCupo()
+      return
+    }
+    if (res.matchId) setMatch({ matchId: res.matchId, candidato, intencion: modo })
   }
 
   /**
@@ -169,12 +185,29 @@ export function Mazo() {
         {/* Sin card arriba (mazo vacío o cargando) no hay nada que resolver:
             los botones desaparecen y queda solo el mensaje de "nadie más". */}
         {arriba && (
-          <Acciones
-            deshabilitado={Boolean(match)}
-            etiquetaLike={def.like}
-            onPass={() => resolverConBoton('pass')}
-            onLike={() => resolverConBoton('like')}
-          />
+          <>
+            {cupo && !cupo.ilimitado && (
+              <p
+                className={[
+                  'shrink-0 text-center text-xs font-semibold px-4',
+                  sinCupo ? 'text-[var(--color-nope)]' : 'text-grafito',
+                ].join(' ')}
+                aria-live="polite"
+              >
+                {sinCupo
+                  ? 'Te quedaste sin likes por hoy. Vuelven mañana.'
+                  : `Te quedan ${cupo.restantes} ${cupo.restantes === 1 ? 'like' : 'likes'} hoy`}
+              </p>
+            )}
+
+            <Acciones
+              deshabilitado={Boolean(match)}
+              likeBloqueado={sinCupo}
+              etiquetaLike={def.like}
+              onPass={() => resolverConBoton('pass')}
+              onLike={() => resolverConBoton('like')}
+            />
+          </>
         )}
       </section>
 

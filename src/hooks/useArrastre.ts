@@ -5,6 +5,9 @@ import type { DireccionSwipe } from '@/lib/tipos'
 interface Opciones {
   onResolver: (direccion: DireccionSwipe) => void
   deshabilitado?: boolean
+  /** Sin cupo diario: el arrastre a la derecha rebota en vez de resolver.
+   *  El pass no se toca — descartar es gratis. */
+  bloquearLike?: boolean
   reducido?: boolean
 }
 
@@ -23,7 +26,12 @@ const ROTACION_MAX = 14
  *
  * Solo se animan `transform` y `opacity`.
  */
-export function useArrastre({ onResolver, deshabilitado = false, reducido = false }: Opciones) {
+export function useArrastre({
+  onResolver,
+  deshabilitado = false,
+  bloquearLike = false,
+  reducido = false,
+}: Opciones) {
   const card = useRef<HTMLDivElement>(null)
   /** Capa de resaltador fluo que crece al arrastrar a la derecha. */
   const capaLike = useRef<HTMLDivElement>(null)
@@ -34,6 +42,7 @@ export function useArrastre({ onResolver, deshabilitado = false, reducido = fals
   // provocar re-render ni recrear los listeners.
   const resolver = useRef(onResolver)
   const bloqueado = useRef(deshabilitado)
+  const sinLike = useRef(bloquearLike)
 
   // Sin array de dependencias: se sincroniza después de cada render. Va en un
   // efecto y no en el cuerpo del hook porque escribir un ref durante el render
@@ -41,6 +50,7 @@ export function useArrastre({ onResolver, deshabilitado = false, reducido = fals
   useEffect(() => {
     resolver.current = onResolver
     bloqueado.current = deshabilitado
+    sinLike.current = bloquearLike
   })
 
   useEffect(() => {
@@ -124,9 +134,11 @@ export function useArrastre({ onResolver, deshabilitado = false, reducido = fals
       // Un flick manda en su propia dirección aunque el dedo haya vuelto atrás.
       const haciaDerecha = paso ? dx > 0 : velocidad > 0
 
-      if (paso || flick) {
+      if ((paso || flick) && !(haciaDerecha && sinLike.current)) {
         volar(haciaDerecha ? 'like' : 'pass')
       } else {
+        // Incluye el caso "quiso dar like sin cupo": la card vuelve a su lugar
+        // y el mensaje de abajo explica por qué.
         regresar()
       }
     }
@@ -180,6 +192,7 @@ export function useArrastre({ onResolver, deshabilitado = false, reducido = fals
   function resolverConBoton(direccion: DireccionSwipe) {
     const el = card.current
     if (!el || bloqueado.current) return
+    if (direccion === 'like' && sinLike.current) return
 
     const capa = direccion === 'like' ? capaLike.current : capaPass.current
     const tl = gsap.timeline()

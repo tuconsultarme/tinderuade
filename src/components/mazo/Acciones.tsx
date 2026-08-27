@@ -3,6 +3,9 @@ interface Props {
   onLike: () => void
   etiquetaLike: string
   deshabilitado?: boolean
+  /** Sin cupo diario: se apaga el like pero el pass sigue disponible, porque
+   *  descartar no consume nada. */
+  likeBloqueado?: boolean
 }
 
 /**
@@ -12,7 +15,13 @@ interface Props {
  *
  * Pasar (rojo) · Me gusta (verde). Una decisión tomada no se vuelve atrás.
  */
-export function Acciones({ onPass, onLike, etiquetaLike, deshabilitado = false }: Props) {
+export function Acciones({
+  onPass,
+  onLike,
+  etiquetaLike,
+  deshabilitado = false,
+  likeBloqueado = false,
+}: Props) {
   return (
     <div className="shrink-0 flex items-center justify-center gap-6 py-4">
       <BotonAccion
@@ -34,9 +43,9 @@ export function Acciones({ onPass, onLike, etiquetaLike, deshabilitado = false }
 
       <BotonAccion
         onClick={onLike}
-        etiqueta={etiquetaLike}
+        etiqueta={likeBloqueado ? 'Sin likes disponibles hasta mañana' : etiquetaLike}
         color="var(--color-like)"
-        deshabilitado={deshabilitado}
+        deshabilitado={deshabilitado || likeBloqueado}
       >
         <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
           <path
