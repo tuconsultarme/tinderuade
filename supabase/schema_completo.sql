@@ -1063,6 +1063,25 @@ delete from swipes where intencion::text = 'match';
 delete from profile_intenciones where intencion::text = 'match';
 
 -- ############################################################
+-- ### migrations/0012_edad_minima_17.sql
+-- ############################################################
+
+create or replace function validar_mayoria_edad()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.fecha_nacimiento > current_date - interval '17 years' then
+    raise exception 'El usuario debe tener al menos 17 años';
+  end if;
+  return new;
+end;
+$$;
+
+alter table profiles drop constraint if exists profiles_edad_min_check;
+alter table profiles add constraint profiles_edad_min_check check (edad_min >= 17);
+
+-- ############################################################
 -- ### seed.sql
 -- ############################################################
 

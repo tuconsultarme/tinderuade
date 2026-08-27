@@ -49,6 +49,17 @@ export const INTENCIONES: DefIntencion[] = [
 
 export function definicion(id: Intencion): DefIntencion {
   const def = INTENCIONES.find((i) => i.id === id)
-  if (!def) throw new Error(`Intención desconocida: ${id}`)
-  return def
+  if (def) return def
+  // No se rompe la UI por un dato inesperado: un enum viejo o inválido en la
+  // base (ver migración 0011) haría explotar cualquier pantalla que muestre la
+  // etiqueta. Mejor un valor neutro y un aviso por consola.
+  console.warn(`Intención desconocida: ${id}`)
+  return {
+    id,
+    etiqueta: 'Match',
+    titulo: 'Gente',
+    vacio: 'Por ahora no hay nadie más para mostrarte acá.',
+    like: 'Me gusta',
+    match: 'también te dio like.',
+  }
 }
