@@ -3,36 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { AlternadorTema } from './AlternadorTema'
 import { supabase } from '@/lib/supabase'
 import { useSesion } from '@/context/SesionContext'
+import { usePlan } from '@/context/PlanContext'
+import { useToast } from '@/components/ui/Toast'
 import { definicion } from '@/lib/intenciones'
+import { PLANES, etiquetaPlan, colorPlan } from '@/lib/planes'
 import { MODO_DEMO } from '@/lib/demo'
 import type { Intencion } from '@/lib/tipos'
-
-interface Plan {
-  nombre: string
-  precio: string
-  destacado?: boolean
-  beneficios: string[]
-}
-
-/** Planes de ejemplo — todavía no hay cobros conectados. */
-const PLANES: Plan[] = [
-  {
-    nombre: 'Gratis',
-    precio: '$0',
-    beneficios: ['Swipes limitados por día', 'Chat con tus matches', 'Las tres lentes'],
-  },
-  {
-    nombre: 'Plus',
-    precio: '$2.500 / mes',
-    destacado: true,
-    beneficios: ['Likes ilimitados', 'Deshacer sin límite', 'Sin publicidad'],
-  },
-  {
-    nombre: 'Gold',
-    precio: '$4.900 / mes',
-    beneficios: ['Todo lo de Plus', 'Ves quién te dio like', '5 destacados por semana'],
-  },
-]
 
 type Vista = 'menu' | 'planes' | 'historial' | 'bloqueados'
 
@@ -76,6 +52,8 @@ export function MenuHamburguesa() {
   const [abierto, setAbierto] = useState(false)
   const [vista, setVista] = useState<Vista>('menu')
   const { salir, sesion } = useSesion()
+  const { plan: miPlan, activarPlan } = usePlan()
+  const { mostrar } = useToast()
   const navegar = useNavigate()
   const miId = sesion?.user.id
 
@@ -376,35 +354,73 @@ export function MenuHamburguesa() {
               <ItemNav etiqueta="Historial de matches" onClick={() => abrir('historial')} />
               <ItemNav etiqueta="Perfiles bloqueados" onClick={() => abrir('bloqueados')} />
 
-              <p className="dato text-grafito mt-5 mb-1">Suscripción</p>
+              <div className="flex items-center gap-2 mt-5 mb-1">
+                <p className="dato text-grafito">Suscripción</p>
+                {etiquetaPlan(miPlan) && (
+                  <span className="dato font-extrabold" style={{ color: colorPlan(miPlan) ?? undefined }}>
+                    {etiquetaPlan(miPlan)}
+                  </span>
+                )}
+              </div>
               <ItemNav etiqueta="Ver planes" onClick={() => abrir('planes')} />
             </div>
           )}
 
           {vista === 'planes' && (
             <ul className="flex flex-col gap-3">
-              {PLANES.map((plan) => (
-                <li
-                  key={plan.nombre}
-                  className={['rounded-2xl p-4', plan.destacado ? 'gradiente text-papel-fija sombra-boton' : 'border border-lapiz'].join(' ')}
-                >
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-lg font-extrabold">{plan.nombre}</span>
-                    <span className={['text-sm font-semibold', plan.destacado ? '' : 'text-grafito'].join(' ')}>{plan.precio}</span>
-                  </div>
-                  <ul className={['mt-2 flex flex-col gap-1 text-sm', plan.destacado ? 'text-papel-fija/90' : 'text-grafito'].join(' ')}>
-                    {plan.beneficios.map((b) => (
-                      <li key={b} className="flex items-center gap-2">
-                        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-                          <path d="M5 12l4 4 10-10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        {b}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-              <p className="text-xs text-grafito text-center mt-1">Los pagos todavía no están habilitados.</p>
+              {PLANES.map((plan) => {
+                const actual = plan.id === miPlan
+                return (
+                  <li
+                    key={plan.id}
+                    className={['rounded-2xl p-4', plan.destacado ? 'gradiente text-papel-fija sombra-boton' : 'border border-lapiz'].join(' ')}
+                  >
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-lg font-extrabold">{plan.nombre}</span>
+                      <span className={['text-sm font-semibold', plan.destacado ? '' : 'text-grafito'].join(' ')}>{plan.precio}</span>
+                    </div>
+                    <ul className={['mt-2 flex flex-col gap-1 text-sm', plan.destacado ? 'text-papel-fija/90' : 'text-grafito'].join(' ')}>
+                      {plan.beneficios.map((b) => (
+                        <li key={b} className="flex items-center gap-2">
+                          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                            <path d="M5 12l4 4 10-10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          {b}
+                        </li>
+                      ))}
+                    </ul>
+
+                    {actual ? (
+                      <p className="mt-3 text-center text-sm font-bold uppercase tracking-wide opacity-80">
+                        ✓ Tu plan actual
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void activarPlan(plan.id)
+                          mostrar(
+                            plan.id === 'gratis'
+                              ? 'Volviste al plan Gratis.'
+                              : `¡Plan ${plan.nombre} activado! (demo)`,
+                          )
+                        }}
+                        className={[
+                          'mt-3 w-full min-h-11 rounded-full font-bold uppercase tracking-wide text-sm active:scale-[0.97] transition-transform',
+                          plan.destacado
+                            ? 'bg-papel-fija text-[var(--grad-1)]'
+                            : plan.id === 'gratis'
+                              ? 'border-2 border-lapiz text-grafito'
+                              : 'gradiente text-papel-fija',
+                        ].join(' ')}
+                      >
+                        {plan.id === 'gratis' ? 'Cambiar a Gratis' : 'Comprar'}
+                      </button>
+                    )}
+                  </li>
+                )
+              })}
+              <p className="text-xs text-grafito text-center mt-1">Pago en modo demo: se activa al instante, sin cobro real.</p>
             </ul>
           )}
 

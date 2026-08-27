@@ -3,6 +3,8 @@ interface Props {
   onLike: () => void
   etiquetaLike: string
   deshabilitado?: boolean
+  /** True cuando se acabó el cupo diario de likes (plan gratis). */
+  likeBloqueado?: boolean
   /** Sin handler, el botón de deshacer ni aparece: no hay nada que deshacer. */
   onDeshacer?: () => void
 }
@@ -19,6 +21,7 @@ export function Acciones({
   onLike,
   etiquetaLike,
   deshabilitado = false,
+  likeBloqueado = false,
   onDeshacer,
 }: Props) {
   return (
@@ -78,7 +81,7 @@ export function Acciones({
         etiqueta={etiquetaLike}
         color="var(--color-like)"
         tam="grande"
-        deshabilitado={deshabilitado}
+        deshabilitado={deshabilitado || likeBloqueado}
       >
         <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
           <path

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { ProveedorSesion, useSesion } from './context/SesionContext'
+import { ProveedorPlan } from './context/PlanContext'
 import { ProveedorModo } from './context/ModoContext'
 import { ProveedorToast } from './components/ui/Toast'
 import { AppShell } from './components/shell/AppShell'
@@ -167,9 +168,11 @@ export default function App() {
     <BrowserRouter>
       <ProveedorToast>
         <ProveedorSesion>
-          <ProveedorModo>
-            <Rutas />
-          </ProveedorModo>
+          <ProveedorPlan>
+            <ProveedorModo>
+              <Rutas />
+            </ProveedorModo>
+          </ProveedorPlan>
         </ProveedorSesion>
       </ProveedorToast>
     </BrowserRouter>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { urlsFirmadas } from '@/lib/fotos'
 import { TAMANO_TANDA, UMBRAL_RECARGA } from '@/lib/config'
+import { comoPlan, type Plan } from '@/lib/planes'
 import { MODO_DEMO, candidatosDemo, registrarLikeDemo, deshacerLikeDemo } from '@/lib/demo'
 import type { Candidato, CandidatoConFotos, DireccionSwipe, Intencion } from '@/lib/tipos'
 
@@ -252,12 +253,27 @@ async function resolverFotos(candidatos: Candidato[]): Promise<CandidatoConFotos
   }
 
   const todos = [...porPerfil.values()].flat()
-  const firmadas = await urlsFirmadas(todos)
+  const [firmadas, planPorId] = await Promise.all([
+    urlsFirmadas(todos),
+    planesDe(candidatos.map((c) => c.id)),
+  ])
 
   return candidatos.map((c) => ({
     ...c,
     fotos: (porPerfil.get(c.id) ?? [])
       .map((p) => firmadas.get(p))
       .filter((u): u is string => Boolean(u)),
+    plan: planPorId.get(c.id) ?? 'gratis',
   }))
+}
+
+/** Trae el plan de cada perfil. Tolerante: si falta la columna (migración
+ *  0013 sin aplicar), devuelve el mapa vacío y todos quedan en 'gratis'. */
+async function planesDe(ids: string[]): Promise<Map<string, Plan>> {
+  const mapa = new Map<string, Plan>()
+  if (ids.length === 0) return mapa
+  const { data, error } = await supabase.from('profiles').select('id, plan').in('id', ids)
+  if (error || !data) return mapa
+  for (const p of data as { id: string; plan?: unknown }[]) mapa.set(p.id, comoPlan(p.plan))
+  return mapa
 }

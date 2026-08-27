@@ -1082,6 +1082,14 @@ alter table profiles drop constraint if exists profiles_edad_min_check;
 alter table profiles add constraint profiles_edad_min_check check (edad_min >= 17);
 
 -- ############################################################
+-- ### migrations/0013_planes.sql
+-- ############################################################
+
+alter table profiles add column if not exists plan text not null default 'gratis';
+alter table profiles drop constraint if exists profiles_plan_check;
+alter table profiles add constraint profiles_plan_check check (plan in ('gratis', 'plus', 'gold'));
+
+-- ############################################################
 -- ### seed.sql
 -- ############################################################
 

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useSesion } from '@/context/SesionContext'
+import { usePlan } from '@/context/PlanContext'
 import { useToast } from '@/components/ui/Toast'
 import { Cargando, Vacio, Aviso } from '@/components/ui/Estados'
 import { definicion } from '@/lib/intenciones'
@@ -25,15 +26,17 @@ function fmtFecha(iso: string): string {
  */
 export function MatchesRecibidos() {
   const { sesion } = useSesion()
+  const { capacidades } = usePlan()
   const { mostrar } = useToast()
   const miId = sesion?.user.id
+  const puedeVer = capacidades.veQuienTeDioLike
 
   const [recibidos, setRecibidos] = useState<Recibido[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState<string | null>(null)
 
   const cargar = useCallback(async () => {
-    if (MODO_DEMO || !miId) {
+    if (MODO_DEMO || !miId || !puedeVer) {
       setRecibidos([])
       return
     }
@@ -55,7 +58,7 @@ export function MatchesRecibidos() {
         fecha: r.recibido_at,
       })),
     )
-  }, [miId])
+  }, [miId, puedeVer])
 
   useEffect(() => {
     void cargar()
@@ -82,6 +85,27 @@ export function MatchesRecibidos() {
 
     setRecibidos((prev) => (prev ?? []).filter((x) => !(x.emisorId === r.emisorId && x.intencion === r.intencion)))
     mostrar(direccion === 'like' ? '¡Es un match! Ya podés escribirle.' : 'Listo, no lo vas a ver más.')
+  }
+
+  if (!puedeVer) {
+    return (
+      <div className="px-4 py-4">
+        <h1 className="text-3xl mb-4">Te dieron like</h1>
+        <div className="rounded-2xl border border-lapiz p-6 text-center flex flex-col items-center gap-3">
+          <span className="grid place-items-center w-14 h-14 rounded-full gradiente text-papel-fija">
+            <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+              <rect x="5" y="11" width="14" height="9" rx="2" fill="none" stroke="currentColor" strokeWidth="2" />
+              <path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" strokeWidth="2" />
+            </svg>
+          </span>
+          <p className="font-bold text-lg">Esto es de Gold</p>
+          <p className="text-sm text-grafito text-balance">
+            Con el plan Gold ves quién te dio like y podés devolverlo o rechazarlo desde acá.
+            Activá Gold desde el menú (☰ arriba a la derecha) → Ver planes.
+          </p>
+        </div>
+      </div>
+    )
   }
 
   if (recibidos === null) return <Cargando texto="Buscando quién te dio like" />

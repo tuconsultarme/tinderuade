@@ -1,5 +1,6 @@
 import { forwardRef } from 'react'
 import type { CandidatoConFotos, Intencion } from '@/lib/tipos'
+import { estiloNombre } from '@/lib/planes'
 import { CarruselFotos } from './CarruselFotos'
 
 interface Props {
@@ -14,7 +15,7 @@ export const CardPerfil = forwardRef<HTMLDivElement, Props>(function CardPerfil(
   { candidato, modo, refLike, refPass, onAbrir },
   ref,
 ) {
-  const { nombre, edad, carrera, sede, anio_ingreso, bio, materias_en_comun, fotos } = candidato
+  const { nombre, edad, carrera, sede, anio_ingreso, bio, materias_en_comun, fotos, plan } = candidato
 
   return (
     <div
@@ -33,7 +34,7 @@ export const CardPerfil = forwardRef<HTMLDivElement, Props>(function CardPerfil(
             data-flip-id="nombre"
             className="text-papel-fija text-[2rem] font-semibold leading-none flex items-end gap-2"
           >
-            {nombre}
+            <span style={estiloNombre(plan ?? 'gratis')}>{nombre}</span>
             <span className="tabular text-2xl font-normal">{edad}</span>
           </h2>
 

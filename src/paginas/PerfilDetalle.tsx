@@ -7,6 +7,7 @@ import { ShellPlano } from '@/components/shell/AppShell'
 import { CarruselFotos } from '@/components/mazo/CarruselFotos'
 import { Cargando, Vacio, Aviso } from '@/components/ui/Estados'
 import { Boton } from '@/components/ui/Boton'
+import { comoPlan, estiloNombre, type Plan } from '@/lib/planes'
 import { MODO_DEMO, perfilDetalleDemo, hayMatchDemo } from '@/lib/demo'
 
 interface Detalle {
@@ -18,6 +19,7 @@ interface Detalle {
   anio_ingreso: number | null
   instagram: string | null
   fotos: string[]
+  plan?: Plan
 }
 
 export function PerfilDetalle() {
@@ -58,7 +60,7 @@ export function PerfilDetalle() {
       const miId = sesion.user.id
       const [a, b] = miId < perfilId ? [miId, perfilId] : [perfilId, miId]
 
-      const [{ data: carrera }, { data: sede }, { data: fotos }, { data: match }] =
+      const [{ data: carrera }, { data: sede }, { data: fotos }, { data: match }, { data: planFila }] =
         await Promise.all([
           p.carrera_id
             ? supabase.from('carreras').select('nombre').eq('id', p.carrera_id).maybeSingle()
@@ -78,6 +80,9 @@ export function PerfilDetalle() {
             .eq('profile_b', b)
             .eq('activo', true)
             .maybeSingle(),
+          // Query aparte y tolerante: si falta la columna (migración 0013), no
+          // rompe la carga del perfil, solo queda sin color.
+          supabase.from('profiles').select('plan').eq('id', perfilId).maybeSingle(),
         ])
 
       const paths = (fotos ?? []).map((f) => f.storage_path as string)
@@ -94,6 +99,7 @@ export function PerfilDetalle() {
         anio_ingreso: p.anio_ingreso as number | null,
         instagram: p.instagram as string | null,
         fotos: paths.map((p2) => firmadas.get(p2)).filter((u): u is string => Boolean(u)),
+        plan: comoPlan((planFila as { plan?: unknown } | null)?.plan),
       })
       setCargando(false)
     })()
@@ -172,7 +178,7 @@ export function PerfilDetalle() {
 
         <div>
           <h2 className="text-2xl">
-            {detalle.nombre}
+            <span style={estiloNombre(detalle.plan ?? 'gratis')}>{detalle.nombre}</span>
             <span className="tabular font-mono text-lg font-normal text-grafito ml-2">
               {detalle.edad}
             </span>

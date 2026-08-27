@@ -6,6 +6,10 @@ interface Opciones {
   onResolver: (direccion: DireccionSwipe) => void
   deshabilitado?: boolean
   reducido?: boolean
+  /** Si devuelve false, el "me gusta" no se concreta: la card rebota. */
+  permitirLike?: () => boolean
+  /** Se llama cuando un like se bloqueó por permitirLike. */
+  onLikeBloqueado?: () => void
 }
 
 /** A partir de acá el gesto cuenta como decisión, medido sobre el ancho de la card. */
@@ -23,7 +27,13 @@ const ROTACION_MAX = 14
  *
  * Solo se animan `transform` y `opacity`.
  */
-export function useArrastre({ onResolver, deshabilitado = false, reducido = false }: Opciones) {
+export function useArrastre({
+  onResolver,
+  deshabilitado = false,
+  reducido = false,
+  permitirLike,
+  onLikeBloqueado,
+}: Opciones) {
   const card = useRef<HTMLDivElement>(null)
   /** Capa de resaltador fluo que crece al arrastrar a la derecha. */
   const capaLike = useRef<HTMLDivElement>(null)
@@ -34,6 +44,8 @@ export function useArrastre({ onResolver, deshabilitado = false, reducido = fals
   // provocar re-render ni recrear los listeners.
   const resolver = useRef(onResolver)
   const bloqueado = useRef(deshabilitado)
+  const dejarLike = useRef(permitirLike)
+  const avisarBloqueo = useRef(onLikeBloqueado)
 
   // Sin array de dependencias: se sincroniza después de cada render. Va en un
   // efecto y no en el cuerpo del hook porque escribir un ref durante el render
@@ -41,7 +53,14 @@ export function useArrastre({ onResolver, deshabilitado = false, reducido = fals
   useEffect(() => {
     resolver.current = onResolver
     bloqueado.current = deshabilitado
+    dejarLike.current = permitirLike
+    avisarBloqueo.current = onLikeBloqueado
   })
+
+  /** True si el like está permitido (o no hay restricción). */
+  function likePermitido(): boolean {
+    return dejarLike.current ? dejarLike.current() : true
+  }
 
   useEffect(() => {
     const el = card.current
@@ -125,6 +144,12 @@ export function useArrastre({ onResolver, deshabilitado = false, reducido = fals
       const haciaDerecha = paso ? dx > 0 : velocidad > 0
 
       if (paso || flick) {
+        // Un like bloqueado (ej: sin likes en el plan gratis) no vuela: rebota.
+        if (haciaDerecha && !likePermitido()) {
+          avisarBloqueo.current?.()
+          regresar()
+          return
+        }
         volar(haciaDerecha ? 'like' : 'pass')
       } else {
         regresar()
@@ -180,6 +205,11 @@ export function useArrastre({ onResolver, deshabilitado = false, reducido = fals
   function resolverConBoton(direccion: DireccionSwipe) {
     const el = card.current
     if (!el || bloqueado.current) return
+
+    if (direccion === 'like' && !likePermitido()) {
+      avisarBloqueo.current?.()
+      return
+    }
 
     const capa = direccion === 'like' ? capaLike.current : capaPass.current
     const tl = gsap.timeline()

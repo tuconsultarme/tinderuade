@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, useId } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useId } from 'react'
 import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { Flip } from 'gsap/Flip'
@@ -9,10 +9,13 @@ import { MatchOverlay } from '@/components/MatchOverlay'
 import { Cargando, Vacio, Aviso } from '@/components/ui/Estados'
 import { Boton } from '@/components/ui/Boton'
 import { useModo } from '@/context/ModoContext'
+import { usePlan } from '@/context/PlanContext'
+import { useToast } from '@/components/ui/Toast'
 import { useMazo } from '@/hooks/useMazo'
 import { useArrastre } from '@/hooks/useArrastre'
 import { useMovimientoReducido } from '@/hooks/useMovimientoReducido'
 import { definicion } from '@/lib/intenciones'
+import { likesRestantes, registrarLikeHoy } from '@/lib/planes'
 import type { CandidatoConFotos, DireccionSwipe, Intencion } from '@/lib/tipos'
 
 gsap.registerPlugin(Flip)
@@ -27,25 +30,39 @@ export function Mazo() {
   const { modo, setModo } = useModo()
   const { candidatos, cargando, error, swipear, hayParaDeshacer, deshacer, recargar } =
     useMazo(modo)
+  const { capacidades, plan } = usePlan()
+  const { mostrar } = useToast()
   const reducido = useMovimientoReducido()
   const navegar = useNavigate()
   const panelId = useId()
 
   const [match, setMatch] = useState<MatchNuevo | null>(null)
+  // Likes que quedan hoy (null = ilimitado). Solo aplica al plan gratis.
+  const [likesHoy, setLikesHoy] = useState<number | null>(() => likesRestantes(plan))
+  useEffect(() => setLikesHoy(likesRestantes(plan)), [plan])
   const estadoFlip = useRef<Flip.FlipState | null>(null)
 
   const arriba = candidatos[0] ?? null
   const siguiente = candidatos[1] ?? null
+  const likeBloqueado = !capacidades.likesIlimitados && (likesHoy ?? 0) <= 0
 
   const { card, capaLike, capaPass, resolverConBoton } = useArrastre({
     onResolver: (direccion) => void resolver(direccion),
     deshabilitado: !arriba || Boolean(match),
     reducido,
+    permitirLike: () => capacidades.likesIlimitados || (likesHoy ?? 0) > 0,
+    onLikeBloqueado: () =>
+      mostrar('Llegaste al límite de likes de hoy. Pasate a Plus para tener likes ilimitados.'),
   })
 
   async function resolver(direccion: DireccionSwipe) {
     if (!arriba) return
     const candidato = arriba
+    // El like ya pasó el filtro de useArrastre; acá se descuenta del cupo diario.
+    if (direccion === 'like' && !capacidades.likesIlimitados) {
+      registrarLikeHoy()
+      setLikesHoy(likesRestantes(plan))
+    }
     const matchId = await swipear(candidato, direccion)
     if (matchId) setMatch({ matchId, candidato, intencion: modo })
   }
@@ -142,13 +159,23 @@ export function Mazo() {
         {/* Sin card arriba (mazo vacío o cargando) no hay nada que resolver:
             los botones desaparecen y queda solo el mensaje de "nadie más". */}
         {arriba && (
-          <Acciones
-            deshabilitado={Boolean(match)}
-            etiquetaLike={def.like}
-            onPass={() => resolverConBoton('pass')}
-            onLike={() => resolverConBoton('like')}
-            onDeshacer={hayParaDeshacer && !match ? () => void deshacer() : undefined}
-          />
+          <>
+            {!capacidades.likesIlimitados && (
+              <p className="text-center text-xs text-grafito">
+                {(likesHoy ?? 0) > 0
+                  ? `Te quedan ${likesHoy} likes hoy`
+                  : 'Te quedaste sin likes hoy · pasate a Plus'}
+              </p>
+            )}
+            <Acciones
+              deshabilitado={Boolean(match)}
+              likeBloqueado={likeBloqueado}
+              etiquetaLike={def.like}
+              onPass={() => resolverConBoton('pass')}
+              onLike={() => resolverConBoton('like')}
+              onDeshacer={hayParaDeshacer && !match && capacidades.puedeDeshacer ? () => void deshacer() : undefined}
+            />
+          </>
         )}
       </section>
 

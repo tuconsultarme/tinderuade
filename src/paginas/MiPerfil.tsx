@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useSesion } from '@/context/SesionContext'
+import { usePlan } from '@/context/PlanContext'
+import { estiloNombre } from '@/lib/planes'
 import { useMisFotos } from '@/hooks/useMisFotos'
 import { useCatalogos } from '@/hooks/useCatalogos'
 import { GestorFotos } from '@/components/GestorFotos'
@@ -27,6 +29,7 @@ export function MiPerfil() {
 
 function FormularioPerfil() {
   const { sesion, perfil, refrescarPerfil, salir } = useSesion()
+  const { plan } = usePlan()
   const userId = sesion!.user.id
   const datos = perfil!
   const { fotos, urls, cargando: cargandoFotos, refrescar } = useMisFotos(userId)
@@ -124,7 +127,7 @@ function FormularioPerfil() {
   return (
     <div className="px-4 py-4 flex flex-col gap-6">
       <header>
-        <h1 className="text-3xl">{datos.nombre}</h1>
+        <h1 className="text-3xl" style={estiloNombre(plan)}>{datos.nombre}</h1>
         <p className="dato text-grafito mt-1">{sesion?.user.email}</p>
       </header>
 

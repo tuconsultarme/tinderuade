@@ -3,6 +3,8 @@
  * Si cambia una migración, esto tiene que cambiar con ella.
  */
 
+import type { Plan } from './planes'
+
 export type Genero = 'masculino' | 'femenino' | 'no_binario' | 'otro'
 export type Intencion = 'citas' | 'amistad' | 'estudio'
 export type DireccionSwipe = 'like' | 'pass'
@@ -65,6 +67,8 @@ export interface Candidato {
 /** Candidato con sus fotos ya resueltas a signed URLs. */
 export interface CandidatoConFotos extends Candidato {
   fotos: string[]
+  /** Plan del candidato, para pintar el nombre. Ausente = gratis. */
+  plan?: Plan
 }
 
 export interface Match {
