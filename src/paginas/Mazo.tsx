@@ -10,6 +10,8 @@ import { Cargando, Vacio, Aviso } from '@/components/ui/Estados'
 import { Boton } from '@/components/ui/Boton'
 import { useModo } from '@/context/ModoContext'
 import { useSesion } from '@/context/SesionContext'
+import { usePlan } from '@/context/PlanContext'
+import { useToast } from '@/components/ui/Toast'
 import { useMazo } from '@/hooks/useMazo'
 import { useCupo } from '@/hooks/useCupo'
 import { useArrastre } from '@/hooks/useArrastre'
@@ -29,8 +31,10 @@ export function Mazo() {
   const { modo, setModo } = useModo()
   const { intenciones } = useSesion()
   const { cupo, sinCupo, consumir, refrescar: refrescarCupo } = useCupo()
-  const { candidatos, cargando, error, swipear, recargar } =
+  const { candidatos, cargando, error, swipear, hayParaDeshacer, deshacer, recargar } =
     useMazo(modo)
+  const { capacidades } = usePlan()
+  const { mostrar } = useToast()
   const reducido = useMovimientoReducido()
   const navegar = useNavigate()
   const panelId = useId()
@@ -52,10 +56,12 @@ export function Mazo() {
   const { card, capaLike, capaPass, resolverConBoton } = useArrastre({
     onResolver: (direccion) => void resolver(direccion),
     deshabilitado: !arriba || Boolean(match),
-    // Sin cupo el arrastre a la derecha vuelve a su lugar en vez de resolver.
-    // El pass sigue disponible: descartar no consume nada.
-    bloquearLike: sinCupo,
     reducido,
+    // Sin cupo el arrastre a la derecha rebota en vez de resolver. El pass
+    // sigue disponible: descartar no consume nada.
+    permitirLike: () => !sinCupo,
+    onLikeBloqueado: () =>
+      mostrar('Llegaste al límite de likes de hoy. Pasate a Plus para tener likes ilimitados.'),
   })
 
   async function resolver(direccion: DireccionSwipe) {
@@ -71,6 +77,7 @@ export function Mazo() {
       // La base rechazó el like: el contador local estaba desactualizado
       // (otra pestaña, otro dispositivo). Se resincroniza con la verdad.
       void refrescarCupo()
+      mostrar('Llegaste al límite de likes de hoy. Pasate a Plus para tener likes ilimitados.')
       return
     }
     if (res.matchId) setMatch({ matchId: res.matchId, candidato, intencion: modo })
@@ -195,7 +202,7 @@ export function Mazo() {
                 aria-live="polite"
               >
                 {sinCupo
-                  ? 'Te quedaste sin likes por hoy. Vuelven mañana.'
+                  ? 'Te quedaste sin likes por hoy · pasate a Plus'
                   : `Te quedan ${cupo.restantes} ${cupo.restantes === 1 ? 'like' : 'likes'} hoy`}
               </p>
             )}
@@ -206,6 +213,11 @@ export function Mazo() {
               etiquetaLike={def.like}
               onPass={() => resolverConBoton('pass')}
               onLike={() => resolverConBoton('like')}
+              onDeshacer={
+                hayParaDeshacer && !match && capacidades.puedeDeshacer
+                  ? () => void deshacer()
+                  : undefined
+              }
             />
           </>
         )}

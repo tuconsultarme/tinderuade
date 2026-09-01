@@ -1,4 +1,4 @@
--- Tests del cupo diario de likes (migración 0011).
+-- Tests del cupo diario de likes (migración 0016).
 
 \set QUIET on
 \set ON_ERROR_STOP off

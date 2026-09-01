@@ -1,4 +1,4 @@
--- Tests de mis_likes_recibidos() (migración 0010).
+-- Tests de mis_likes_recibidos() (migración 0015).
 
 \set QUIET on
 \set ON_ERROR_STOP off

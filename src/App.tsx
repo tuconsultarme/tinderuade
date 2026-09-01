@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { ProveedorSesion, useSesion } from './context/SesionContext'
+import { ProveedorPlan } from './context/PlanContext'
 import { ProveedorModo } from './context/ModoContext'
 import { ProveedorToast } from './components/ui/Toast'
 import { AppShell } from './components/shell/AppShell'
@@ -11,6 +12,7 @@ import { Privacidad } from './paginas/Privacidad'
 import { Onboarding } from './paginas/Onboarding'
 import { Mazo } from './paginas/Mazo'
 import { Matches } from './paginas/Matches'
+import { MatchesRecibidos } from './paginas/MatchesRecibidos'
 import { Chat } from './paginas/Chat'
 import { MiPerfil } from './paginas/MiPerfil'
 import { PerfilDetalle } from './paginas/PerfilDetalle'
@@ -54,7 +56,13 @@ function MazoConTabs() {
 }
 
 function Rutas() {
-  const { sesion, perfil, cargando } = useSesion()
+  const { sesion, perfil, cargando, recuperacion } = useSesion()
+
+  // El link de recuperar contraseña arma una sesión válida como cualquier
+  // otra (Supabase lo consume solo de la URL), así que sin este corte
+  // alguien que solo quería cambiar la contraseña terminaría derecho en el
+  // mazo, con la contraseña vieja todavía puesta. Toma cualquier ruta.
+  if (recuperacion) return <Entrada recuperacionForzada />
 
   return (
     <Routes>
@@ -111,6 +119,17 @@ function Rutas() {
       />
 
       <Route
+        path="/recibidos"
+        element={
+          <Privado>
+            <ConTabs>
+              <MatchesRecibidos />
+            </ConTabs>
+          </Privado>
+        }
+      />
+
+      <Route
         path="/perfil"
         element={
           <Privado>
@@ -149,9 +168,11 @@ export default function App() {
     <BrowserRouter>
       <ProveedorToast>
         <ProveedorSesion>
-          <ProveedorModo>
-            <Rutas />
-          </ProveedorModo>
+          <ProveedorPlan>
+            <ProveedorModo>
+              <Rutas />
+            </ProveedorModo>
+          </ProveedorPlan>
         </ProveedorSesion>
       </ProveedorToast>
     </BrowserRouter>

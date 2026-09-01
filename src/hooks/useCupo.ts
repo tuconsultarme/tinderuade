@@ -8,7 +8,7 @@ export interface Cupo {
   ilimitado: boolean
 }
 
-/** SQLSTATE propio del trigger `swipes_cupo_de_likes` (migración 0011). */
+/** SQLSTATE propio del trigger `swipes_cupo_de_likes` (migración 0016). */
 export const CODIGO_SIN_CUPO = 'U0025'
 
 /**
@@ -27,7 +27,7 @@ export function useCupo() {
       return
     }
     const { data, error } = await supabase.rpc('mi_cupo_de_likes')
-    // Si la migración 0011 todavía no se aplicó, la función no existe: se
+    // Si la migración 0016 todavía no se aplicó, la función no existe: se
     // trata como ilimitado para no romper el mazo.
     if (error || !data?.[0]) {
       setCupo({ usados: 0, restantes: Infinity, ilimitado: true })

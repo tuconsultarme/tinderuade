@@ -61,7 +61,7 @@ export function Onboarding() {
     if (paso === 0) {
       if (nombre.trim().length < 2) return 'Poné tu nombre (mínimo 2 caracteres).'
       if (!nacimiento) return 'Falta tu fecha de nacimiento.'
-      if (edadDesde(nacimiento) < 18) return 'Tenés que ser mayor de 18 para usar la app.'
+      if (edadDesde(nacimiento) < 17) return 'Tenés que tener al menos 17 para usar la app.'
       if (!genero) return 'Elegí una opción de género.'
       // Obligatoria desde la 0009: la lente de Estudio filtra por carrera, así
       // que sin cargarla esa mitad de la app queda vacía sin explicación.
@@ -77,7 +77,7 @@ export function Onboarding() {
       const min = Number(edadMin)
       const max = Number(edadMax)
       if (!Number.isFinite(min) || !Number.isFinite(max)) return 'El rango de edad no es válido.'
-      if (min < 18) return 'La edad mínima no puede ser menor a 18.'
+      if (min < 17) return 'La edad mínima no puede ser menor a 17.'
       if (min > max) return 'La edad mínima no puede ser mayor que la máxima.'
       if (instagram && !/^[A-Za-z0-9._]{1,30}$/.test(instagram)) {
         return 'Ese usuario de Instagram no es válido (solo letras, números, punto y guion bajo).'
@@ -324,7 +324,7 @@ export function Onboarding() {
                 ayuda={`${bio.length}/500`}
               />
 
-              {/* La preferencia de género se sacó en la migración 0009: ahora
+              {/* La preferencia de género se sacó en la migración 0014: ahora
                   las lentes filtran solas (Match no te muestra tu mismo género,
                   Estudio solo tu carrera), así que no hay nada que elegir. */}
               <p className="text-sm text-grafito">
@@ -338,7 +338,7 @@ export function Onboarding() {
                   etiqueta="Edad mínima"
                   type="number"
                   inputMode="numeric"
-                  min={18}
+                  min={17}
                   max={120}
                   value={edadMin}
                   onChange={(e) => setEdadMin(e.target.value)}
@@ -347,7 +347,7 @@ export function Onboarding() {
                   etiqueta="Edad máxima"
                   type="number"
                   inputMode="numeric"
-                  min={18}
+                  min={17}
                   max={120}
                   value={edadMax}
                   onChange={(e) => setEdadMax(e.target.value)}
@@ -414,7 +414,9 @@ function bajadaPaso(paso: number): string {
 
 function traducir(mensaje: string): string {
   const m = mensaje.toLowerCase()
-  if (m.includes('mayor de 18')) return 'Tenés que ser mayor de 18 para usar la app.'
+  if (m.includes('17 años') || m.includes('mayor de 18')) {
+    return 'Tenés que tener al menos 17 para usar la app.'
+  }
   if (m.includes('máximo 6 fotos')) return 'Ya tenés el máximo de 6 fotos.'
   if (m.includes('duplicate key')) return 'Eso ya estaba cargado.'
   return mensaje

@@ -1,5 +1,5 @@
--- UADencuentros — planes y límite diario de likes
--- Ejecutar después de 0010.
+-- UADencuentros — límite diario de likes del plan gratuito
+-- Ejecutar después de 0015.
 --
 -- El plan gratuito puede dar 25 likes por día. Los "pass" no consumen nada:
 -- si descartar costara cupo, la gente dejaría de mirar perfiles.
@@ -12,21 +12,18 @@
 begin;
 
 -- ============================================================
--- 1. Plan de cada perfil
+-- 1. El plan de cada perfil lo define 0013
 -- ============================================================
--- Enum y no texto libre: son tres valores que cambian poco, y así un typo no
--- deja a alguien con un plan inexistente (que caería en el caso "no gratis" y
--- le daría likes ilimitados gratis).
-
-do $$
-begin
-  if not exists (select 1 from pg_type where typname = 'plan_suscripcion') then
-    create type plan_suscripcion as enum ('gratis', 'plus', 'gold');
-  end if;
-end $$;
-
-alter table profiles
-  add column if not exists plan plan_suscripcion not null default 'gratis';
+-- Esta migración se escribió en paralelo a 0013 y también agregaba
+-- `profiles.plan`, pero como un enum `plan_suscripcion` en vez de un `text`
+-- con CHECK. Se quedó la de 0013, que es la que ya está aplicada y la que lee
+-- el front (`src/lib/planes.ts`). Acá solo se consume la columna.
+--
+-- Los valores son los mismos ('gratis', 'plus', 'gold'), así que las
+-- comparaciones de más abajo (`plan = 'gratis'`) funcionan igual contra text.
+-- El CHECK de 0013 cubre lo que cubría el enum: un typo no puede dejar a
+-- alguien con un plan inexistente que caiga en el caso "no gratis" y le dé
+-- likes ilimitados.
 
 -- ============================================================
 -- 2. Cuánto queda

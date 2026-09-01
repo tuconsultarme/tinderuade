@@ -23,6 +23,15 @@ interface ValorSesion {
   intenciones: Intencion[]
   /** True mientras no sabemos todavía si hay sesión. Evita parpadeos de rutas. */
   cargando: boolean
+  /**
+   * True cuando la sesión activa viene del link de recuperar contraseña.
+   * Supabase manda ese link con un token en la URL que el cliente consume
+   * solo (`detectSessionInUrl`), y arma una sesión válida como cualquier
+   * otra — así que sin esto, alguien que solo quería cambiar la contraseña
+   * quedaría de una en el mazo, con la contraseña vieja todavía puesta.
+   */
+  recuperacion: boolean
+  terminarRecuperacion: () => void
   refrescarPerfil: () => Promise<void>
   salir: () => Promise<void>
 }
@@ -34,6 +43,7 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
   const [perfil, setPerfil] = useState<Perfil | null>(MODO_DEMO ? PERFIL_DEMO : null)
   const [intenciones, setIntenciones] = useState<Intencion[]>(MODO_DEMO ? INTENCIONES_DEMO : [])
   const [cargando, setCargando] = useState(!MODO_DEMO)
+  const [recuperacion, setRecuperacion] = useState(false)
 
   const traerPerfil = useCallback(async (userId: string) => {
     const { data, error } = await supabase
@@ -74,8 +84,9 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
       if (vigente) setCargando(false)
     })
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_evento, nuevaSesion) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (evento, nuevaSesion) => {
       if (!vigente) return
+      if (evento === 'PASSWORD_RECOVERY') setRecuperacion(true)
       setSesion(nuevaSesion)
       if (nuevaSesion) {
         await traerPerfil(nuevaSesion.user.id)
@@ -96,14 +107,28 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
     if (sesion) await traerPerfil(sesion.user.id)
   }, [sesion, traerPerfil])
 
+  const terminarRecuperacion = useCallback(() => setRecuperacion(false), [])
+
   const salir = useCallback(async () => {
     await supabase.auth.signOut()
     setPerfil(null)
     setIntenciones([])
+    setRecuperacion(false)
   }, [])
 
   return (
-    <Ctx.Provider value={{ sesion, perfil, intenciones, cargando, refrescarPerfil, salir }}>
+    <Ctx.Provider
+      value={{
+        sesion,
+        perfil,
+        intenciones,
+        cargando,
+        recuperacion,
+        terminarRecuperacion,
+        refrescarPerfil,
+        salir,
+      }}
+    >
       {children}
     </Ctx.Provider>
   )

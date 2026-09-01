@@ -17,21 +17,44 @@
    | 4 | `migrations/0004_storage.sql` | Bucket privado de fotos y sus políticas |
    | 5 | `migrations/0005_reordenar_fotos.sql` | Función para reordenar el carrusel de fotos |
    | 6 | `migrations/0006_visibilidad_fotos_bloqueos.sql` | Cierra un bypass: fotos, intenciones y materias ahora respetan bloqueos y perfiles inactivos, igual que ya hacía `profiles` |
-   | 7 | `migrations/0007_deshacer_swipe.sql` | Permite borrar el propio swipe. Quedó **sin uso**: el botón de "deshacer" se sacó del mazo el 2026-08-25 |
-   | 8 | `migrations/0008_chat_rico.sql` | Imágenes y respuestas en el chat |
-   | 9 | `migrations/0009_dos_intenciones.sql` | De tres intenciones a dos: `match` (distinto género) y `estudio` (misma carrera) |
-   | 10 | `migrations/0010_mis_likes_recibidos.sql` | Función "quién me dio like", con el filtro de bloqueos corregido |
-   | 11 | `seed.sql` | Sedes y carreras de UADE |
+   | 7 | `migrations/0007_deshacer_swipe.sql` | Permite borrar el propio swipe, para el botón de "deshacer" del mazo |
+   | 8 | `migrations/0008_chat_rico.sql` | Fotos y respuestas citadas en el chat, bucket privado `fotos-chat` |
+   | 9 | `migrations/0009_bloqueados_con_nombre.sql` | Función para listar los propios bloqueados con nombre |
+   | 10 | `migrations/0010_likes_recibidos.sql` | Función para ver quién te dio like y todavía no respondiste |
+   | 11 | `migrations/0011_arreglar_enum_intencion.sql` | Restaura el enum `intencion` a `citas`/`amistad`/`estudio`. **La 0014 lo vuelve a dejar en dos valores**: se conserva sólo para que una base vieja llegue al mismo estado |
+   | 12 | `migrations/0012_edad_minima_17.sql` | Baja la edad mínima de registro a 17 |
+   | 13 | `migrations/0013_planes.sql` | Columna `profiles.plan` (`gratis`/`plus`/`gold`) |
+   | 14 | `migrations/0014_dos_intenciones.sql` | De tres intenciones a dos: `match` (distinto género) y `estudio` (misma carrera) |
+   | 15 | `migrations/0015_mis_likes_recibidos.sql` | Versión final de "quién me dio like": suma el filtro de bloqueos y el `grant` que faltaban |
+   | 16 | `migrations/0016_cupo_de_likes.sql` | Límite diario de likes del plan gratis, aplicado por trigger en la base |
+   | 17 | `seed.sql` | Sedes y carreras de UADE |
 
-   > **Si la base viene de antes:** aplicá las que te falten, en orden. Cada
-   > una es independiente y se puede correr sola.
+   > **Si la base viene de antes:** aplicá las que te falten, en orden. El orden
+   > importa: la `0011` y la `0014` tocan las dos el enum `intencion` y se
+   > pisan si se corren al revés.
    >
-   > La `0009` **borra datos**: los matches de la vieja intención `amistad` y
+   > **Por qué la `0011` y la `0014` se contradicen.** Se escribieron en
+   > paralelo, sin que una rama supiera de la otra. La `0014` pasa el producto
+   > a dos lentes (`match`, `estudio`); la `0011` leyó ese cambio como un
+   > accidente hecho a mano desde el dashboard y lo revirtió. La decisión de
+   > producto es **dos lentes**, así que la `0014` va después y es la que manda.
+   > Las dos quedan en el repo para que una base que ya aplicó la `0011`
+   > termine en el mismo estado que una creada de cero.
+   >
+   > La `0014` **borra datos**: los matches de la vieja intención `amistad` y
    > sus conversaciones se van. También renombra `citas` a `match`.
    >
-   > La `0010` corrige un bug de privacidad: la versión que estaba en
-   > producción mostraba en "quién me dio like" a gente que te había
-   > bloqueado, porque al ser `SECURITY DEFINER` saltea la RLS de `profiles`.
+   > La `0015` corrige un bug de privacidad: la versión de la `0010` mostraba
+   > en "quién me dio like" a gente que te había bloqueado, porque al ser
+   > `SECURITY DEFINER` saltea la RLS de `profiles`.
+   >
+   > Sin la `0005`, "hacer principal" y borrar fotos del perfil fallan. Sin la
+   > `0006`, alguien que te bloqueó puede seguir viendo tus fotos pidiéndolas
+   > por API directo. Sin la `0007`, el botón de "deshacer" del mazo tira
+   > error. Sin la `0008`, el chat no acepta fotos ni respuestas citadas. Sin
+   > la `0009` y la `0010`, "Perfiles bloqueados" y "Matches recibidos" no
+   > muestran nombres o tiran error. Sin la `0016`, el cupo diario de likes no
+   > se aplica y el plan gratis queda ilimitado.
 
 3. En **Project Settings → API**, copiar y guardar:
    - Project URL
@@ -41,7 +64,7 @@
 ## Decisiones tomadas
 
 - **Registro con email libre.** Cualquiera puede crear cuenta y declara su carrera y sede. Sin restricción por dominio `@uade.edu.ar`, así que no hay garantía de que quien se registra sea de la facultad. El schema está preparado para agregar esa restricción después sin migrar datos.
-- **Tres intenciones**: `citas`, `amistad`, `estudio`. Un perfil elige una o varias y solo se cruza con gente que comparte al menos una. El swipe es **por intención**: podés querer a alguien de compañero de TP y no de cita, y son dos decisiones distintas.
+- **Dos intenciones**: `match` (gente que no es de tu mismo género) y `estudio` (gente de tu misma carrera). Un perfil elige una o las dos y solo se cruza con gente que comparte al menos una. El swipe es **por intención**: podés querer a alguien de compañero de TP y no de cita, y son dos decisiones distintas. Antes eran tres (`citas`, `amistad`, `estudio`); se redujo en la `0014`.
 - **Chat interno** sobre Supabase Realtime. El match *es* la conversación: no hay tabla de conversaciones separada.
 - **Bucket de fotos privado**, servido con signed URLs. Un bucket público deja las fotos accesibles con el link para siempre, sin login y sin poder revocarlas.
 

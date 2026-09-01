@@ -29,8 +29,9 @@
   --color-like: #22d07c; /* me gusta (verde) */
   --color-super: #22a6ff; /* super like (azul) */
 
-  /* Un acento por intención — se conserva el modo de tres lentes, pero en
+  /* Un acento por intención — se conserva un acento por lente, en
      paleta Tinder. El color te dice en qué modo estás. */
+  --color-rewind: #ffb800; /* deshacer (amarillo) */
   --color-match: #fd267d;
   --color-estudio: #22a6ff;
 

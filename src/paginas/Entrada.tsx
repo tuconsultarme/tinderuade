@@ -7,6 +7,7 @@ import { AlternadorTema } from '@/components/AlternadorTema'
 import { CampoTexto } from '@/components/ui/Campo'
 import { Boton } from '@/components/ui/Boton'
 import { Aviso } from '@/components/ui/Estados'
+import { useSesion } from '@/context/SesionContext'
 
 type Modo = 'entrar' | 'registro' | 'recuperar'
 /** Pasos del flujo de recuperar contraseña. */
@@ -14,8 +15,19 @@ type PasoRec = 'mail' | 'codigo' | 'clave'
 
 const RE_MAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
-export function Entrada() {
-  const [modo, setModo] = useState<Modo>('entrar')
+interface Props {
+  /**
+   * True cuando se llegó acá por el link de recuperar contraseña del mail:
+   * ya hay una sesión de recuperación válida (Supabase la arma sola de la
+   * URL), así que no hace falta pedir mail ni código — se salta directo a
+   * poner la contraseña nueva.
+   */
+  recuperacionForzada?: boolean
+}
+
+export function Entrada({ recuperacionForzada = false }: Props) {
+  const { terminarRecuperacion, salir } = useSesion()
+  const [modo, setModo] = useState<Modo>(recuperacionForzada ? 'recuperar' : 'entrar')
   const [mail, setMail] = useState('')
   const [clave, setClave] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -23,7 +35,7 @@ export function Entrada() {
   const [enviando, setEnviando] = useState(false)
 
   // Recuperar contraseña.
-  const [pasoRec, setPasoRec] = useState<PasoRec>('mail')
+  const [pasoRec, setPasoRec] = useState<PasoRec>(recuperacionForzada ? 'clave' : 'mail')
   const [codigo, setCodigo] = useState('')
   const [claveNueva, setClaveNueva] = useState('')
 
@@ -100,7 +112,7 @@ export function Entrada() {
     }
     // No se confirma si el mail existe, a propósito: si no, cualquiera podría
     // averiguar qué mails están registrados probando acá.
-    setAviso('Si ese mail está registrado, te llega un código de 6 dígitos. Revisá tu casilla.')
+    setAviso('Si ese mail está registrado, te llega un código de 8 dígitos. Revisá tu casilla.')
     setPasoRec('codigo')
   }
 
@@ -109,8 +121,8 @@ export function Entrada() {
     e.preventDefault()
     setError(null)
     setAviso(null)
-    if (codigo.trim().length < 6) {
-      setError('El código tiene 6 dígitos.')
+    if (codigo.trim().length < 8) {
+      setError('El código tiene 8 dígitos.')
       return
     }
     setEnviando(true)
@@ -144,8 +156,11 @@ export function Entrada() {
       setError(traducir(err.message))
       return
     }
-    // Ya quedó logueado con la clave nueva; el contexto lo rutea a la app.
-    setAviso('¡Listo! Tu contraseña quedó cambiada.')
+    // Ya quedó logueada la clave nueva. Recién acá se le avisa al contexto
+    // que la recuperación terminó — hasta este punto, <Rutas> fuerza esta
+    // pantalla sin importar a dónde navegue. Con eso baja, sigue el ruteo
+    // normal (mazo si ya tiene onboarding, onboarding si no).
+    terminarRecuperacion()
   }
 
   return (
@@ -176,7 +191,7 @@ export function Entrada() {
               </h1>
               <p className="mt-4 text-grafito text-balance">
                 {pasoRec === 'mail' && 'Poné tu mail y te mandamos un código para cambiarla.'}
-                {pasoRec === 'codigo' && 'Escribí el código de 6 dígitos que te llegó al mail.'}
+                {pasoRec === 'codigo' && 'Escribí el código de 8 dígitos que te llegó al mail.'}
                 {pasoRec === 'clave' && 'Elegí una contraseña nueva.'}
               </p>
             </>
@@ -258,7 +273,16 @@ export function Entrada() {
           <p className="text-center text-sm text-grafito">
             <button
               type="button"
-              onClick={() => irA('entrar')}
+              onClick={() => {
+                if (recuperacionForzada) {
+                  // Ya hay una sesión de recuperación abierta: hace falta
+                  // cerrarla de verdad, no solo cambiar de pantalla local,
+                  // para volver a un login limpio.
+                  void salir()
+                } else {
+                  irA('entrar')
+                }
+              }}
               className="text-tinta font-semibold underline underline-offset-4"
             >
               Volver a entrar
@@ -277,13 +301,18 @@ export function Entrada() {
           </p>
         )}
 
-        <p className="text-center text-sm text-grafito">
-          {modo === 'registro' ? 'Al crear la cuenta aceptás nuestra ' : 'Leé nuestra '}
-          <Link to="/privacidad" className="underline underline-offset-4">
-            política de privacidad
-          </Link>
-          .
-        </p>
+        {/* El link a /privacidad no serviría de nada acá: mientras haya una
+            sesión de recuperación pendiente, <Rutas> fuerza esta pantalla
+            sin importar a dónde navegue. */}
+        {!recuperacionForzada && (
+          <p className="text-center text-sm text-grafito">
+            {modo === 'registro' ? 'Al crear la cuenta aceptás nuestra ' : 'Leé nuestra '}
+            <Link to="/privacidad" className="underline underline-offset-4">
+              política de privacidad
+            </Link>
+            .
+          </p>
+        )}
       </div>
     </ShellPlano>
   )
@@ -352,11 +381,11 @@ function RecuperarFlujo({
           type="text"
           inputMode="numeric"
           autoComplete="one-time-code"
-          maxLength={6}
+          maxLength={8}
           value={codigo}
           onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ''))}
-          placeholder="123456"
-          ayuda="Son 6 dígitos. Puede tardar un minuto en llegar."
+          placeholder="12345678"
+          ayuda="Son 8 dígitos. Puede tardar un minuto en llegar."
           required
         />
         {error && <Aviso>{error}</Aviso>}
@@ -405,6 +434,11 @@ function traducir(mensaje: string): string {
   if (m.includes('password')) return 'La contraseña no cumple los requisitos mínimos.'
   if (m.includes('rate limit') || m.includes('too many')) {
     return 'Demasiados intentos seguidos. Esperá un momento.'
+  }
+  // "For security purposes, you can only request this after N seconds." —
+  // el límite de reenvío del código de recuperación.
+  if (m.includes('security purposes') || m.includes('can only request this after')) {
+    return 'Ya pediste un código hace poco. Esperá un momento antes de pedir otro.'
   }
   // Esto no viene de Supabase: es el fetch del navegador fallando antes de
   // llegar a mandar el pedido (sin conexión, extensión que lo bloquea, etc.).

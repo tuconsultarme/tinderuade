@@ -1,4 +1,4 @@
--- Tests de las dos intenciones (migración 0009).
+-- Tests de las dos intenciones (migración 0014).
 -- Correr sobre una base limpia: stub + schema_completo + 0009.
 --
 -- Reglas que se verifican:

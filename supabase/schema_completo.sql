@@ -955,11 +955,158 @@ create policy "borrar fotos de chat propias" on storage.objects
   );
 
 -- ############################################################
--- ### migrations/0009_dos_intenciones.sql
+-- ### migrations/0009_bloqueados_con_nombre.sql
+-- ############################################################
+
+-- UADencuentros — listar los perfiles bloqueados con su nombre
+-- Ejecutar después de 0008.
+
+-- La política "perfiles visibles" (0003) oculta con hay_bloqueo() a cualquiera
+-- que uno haya bloqueado, así que desde el cliente no se puede leer el nombre
+-- de un bloqueado. Esta función corre como security definer para poder unir con
+-- profiles igual, pero solo devuelve los bloqueos del propio usuario: nunca
+-- expone datos de terceros.
+create or replace function mis_bloqueados()
+returns table (id uuid, nombre text, bloqueado_at timestamptz)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select p.id, p.nombre, b.created_at
+  from bloqueos b
+  join profiles p on p.id = b.bloqueado_id
+  where b.bloqueador_id = auth.uid()
+  order by b.created_at desc
+$$;
+
+grant execute on function mis_bloqueados() to authenticated;
+
+-- ############################################################
+-- ### migrations/0010_likes_recibidos.sql
+-- ############################################################
+
+-- UADencuentros — ver los likes recibidos (para devolver o rechazar)
+-- Ejecutar después de 0009.
+
+-- La RLS de swipes solo deja ver los propios (emisor = auth.uid()), así que
+-- desde el cliente no se puede saber quién te dio like. Esta función lo
+-- resuelve como security definer, pero solo devuelve los likes dirigidos al
+-- propio usuario que todavía no respondió (ni like ni pass en esa intención):
+-- nunca expone likes de terceros entre sí.
+create or replace function mis_likes_recibidos()
+returns table (emisor_id uuid, nombre text, intencion intencion, recibido_at timestamptz)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select s.emisor_id, p.nombre, s.intencion, s.created_at
+  from swipes s
+  join profiles p on p.id = s.emisor_id
+  where s.receptor_id = auth.uid()
+    and s.direccion = 'like'
+    and not exists (
+      select 1 from swipes mio
+      where mio.emisor_id = auth.uid()
+        and mio.receptor_id = s.emisor_id
+        and mio.intencion = s.intencion
+    )
+  order by s.created_at desc
+$$;
+
+grant execute on function mis_likes_recibidos() to authenticated;
+
+-- ############################################################
+-- ### migrations/0011_arreglar_enum_intencion.sql
+-- ############################################################
+
+-- UADencuentros — restaura el enum intencion (citas/amistad/estudio)
+-- Ejecutar después de 0010.
+--
+-- En algún momento se editó el tipo `intencion` a mano desde el dashboard de
+-- Supabase (Database → Enumerated Types) en vez de por migración: quedó con
+-- los valores `match` y `estudio` en vez de `citas`, `amistad` y `estudio`.
+-- Probablemente un rename de "citas" a "match" pensando en el look estilo
+-- Tinder, que de paso se llevó puesto "amistad".
+--
+-- Resultado: el mazo en modo citas/amistad no cargaba ("invalid input value
+-- for enum intencion"), y los swipes/matches/intenciones de perfil que
+-- deberían decir "citas" o "amistad" quedaron con la etiqueta ambigua
+-- "match" — no hay forma de saber cuál era cuál.
+--
+-- Como todo lo que hay cargado hasta ahora son perfiles y swipes de prueba
+-- (el seed de scripts/seed-demo.mjs y pruebas manuales, nada de gente real
+-- todavía), se limpia esa data ambigua en vez de adivinar, y se puede volver
+-- a correr el seed después. La etiqueta "match" queda en el tipo sin uso: no
+-- vale la pena el riesgo de recrear el tipo (y con él las funciones que lo
+-- referencian) solo para sacarla, ya que el front nunca la va a volver a
+-- generar.
+
+-- 1. Restaurar los valores que faltan. ADD VALUE es aditivo: no toca las
+--    filas existentes.
+alter type intencion add value if not exists 'citas';
+alter type intencion add value if not exists 'amistad';
+
+-- 2. Limpiar la data ambigua. Comparar como texto (intencion::text) y no
+--    contra el literal 'match' directo: en una base nueva (o ya arreglada)
+--    'match' nunca fue ni va a ser un valor válido del enum, así que
+--    Postgres rechazaría el literal antes de llegar a evaluar el WHERE.
+--    Como texto, si no hay ninguna fila así, el DELETE no borra nada y no
+--    rompe nada — que es exactamente lo que tiene que pasar en una base sana.
+--
+--    `matches` se borra antes que `swipes` nomás por orden de lectura: no hay
+--    FK entre ellas que lo exija, y el `on delete cascade` de
+--    mensajes(match_id) se encarga de los mensajes de esos matches solo.
+delete from matches where intencion::text = 'match';
+delete from swipes where intencion::text = 'match';
+delete from profile_intenciones where intencion::text = 'match';
+
+-- ############################################################
+-- ### migrations/0012_edad_minima_17.sql
+-- ############################################################
+
+-- UADencuentros — bajar la edad mínima de 18 a 17
+-- Ejecutar después de 0011.
+
+-- 1. Trigger de mayoría de edad: ahora exige 17, no 18.
+create or replace function validar_mayoria_edad()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.fecha_nacimiento > current_date - interval '17 years' then
+    raise exception 'El usuario debe tener al menos 17 años';
+  end if;
+  return new;
+end;
+$$;
+
+-- 2. Restricción del rango de búsqueda: la edad mínima puede bajar hasta 17.
+alter table profiles drop constraint if exists profiles_edad_min_check;
+alter table profiles add constraint profiles_edad_min_check check (edad_min >= 17);
+
+-- ############################################################
+-- ### migrations/0013_planes.sql
+-- ############################################################
+
+-- UADencuentros — plan de suscripción del perfil
+-- Ejecutar después de 0012.
+
+-- Demo: el plan se activa desde la app (sin pago real todavía). Vive en el
+-- perfil para que se pueda mostrar la insignia también en el perfil de los
+-- demás. La política "editar perfil propio" (0003) ya deja que cada uno cambie
+-- su propio plan, y "perfiles visibles" deja que los demás lo lean.
+alter table profiles add column if not exists plan text not null default 'gratis';
+alter table profiles drop constraint if exists profiles_plan_check;
+alter table profiles add constraint profiles_plan_check check (plan in ('gratis', 'plus', 'gold'));
+
+-- ############################################################
+-- ### migrations/0014_dos_intenciones.sql
 -- ############################################################
 
 -- UADencuentros — de tres intenciones a dos
--- Ejecutar después de 0008.
+-- Ejecutar después de 0013.
 --
 -- Cambia el producto: quedan solo `match` y `estudio`.
 --   match   → gente que NO es de tu mismo género
@@ -970,6 +1117,28 @@ create policy "borrar fotos de chat propias" on storage.objects
 -- 'amistad' se borran, porque esa intención ya no existe en el producto.
 --
 -- OJO: esto borra datos. Los matches de amistad y sus conversaciones se van.
+--
+-- ------------------------------------------------------------------
+-- POR QUÉ ESTA MIGRACIÓN VUELVE A APARECER DESPUÉS DE 0011
+-- ------------------------------------------------------------------
+-- Esta migración se escribió originalmente como 0009 y ya se había aplicado a
+-- la base compartida. La 0011 (`arreglar_enum_intencion`) la interpretó como un
+-- accidente —un rename hecho a mano desde el dashboard de Supabase— y la
+-- revirtió, restaurando `citas` y `amistad` y borrando las filas con `match`.
+--
+-- No fue un accidente: pasar a dos lentes es una decisión de producto. Así que
+-- se vuelve a aplicar acá, ahora ordenada después de 0013 para que el estado
+-- final del enum sea el que espera el front (`src/lib/tipos.ts` →
+-- `Intencion = 'match' | 'estudio'`).
+--
+-- El paso 2 tolera el estado que dejó 0011: en este punto el enum puede tener
+-- los cuatro valores (`match`, `estudio`, `citas`, `amistad`). El USING mapea
+-- `citas`→`match` y deja `match` y `estudio` como están; las filas `amistad`
+-- ya se borraron en el paso 1.
+--
+-- Los datos que 0011 borró no se recuperan. Según su propio comentario eran
+-- perfiles y swipes de prueba del seed, así que se vuelve a correr
+-- `scripts/seed-demo.mjs` y listo.
 
 begin;
 
@@ -1187,26 +1356,36 @@ end $$;
 commit;
 
 -- ############################################################
--- ### migrations/0010_mis_likes_recibidos.sql
+-- ### migrations/0015_mis_likes_recibidos.sql
 -- ############################################################
 
 -- UADencuentros — quién me dio like
--- Ejecutar después de 0009.
---
--- Esta función ya existía en el proyecto de Supabase pero nunca había quedado
--- como migración: se creó a mano desde el SQL Editor. Queda registrada acá para
--- que la base se pueda reconstruir de cero desde `schema_completo.sql`.
+-- Ejecutar después de 0014.
 --
 -- Va en SECURITY DEFINER a propósito, y eso contradice a propósito lo que dice
 -- 0003: la RLS de `swipes` esconde quién te dio like hasta que haya match. Esta
 -- función es la excepción deliberada (la pantalla de "ves quién te dio like").
+-- Solo devuelve los likes dirigidos al propio usuario que todavía no respondió:
+-- nunca expone likes de terceros entre sí.
 --
--- Correcciones respecto de la versión que estaba en producción:
---   1. FILTRABA MAL LOS BLOQUEOS: al ser SECURITY DEFINER saltea la RLS de
---      `profiles`, así que quien te bloqueó seguía apareciendo en tu lista de
---      likes recibidos. Ahora se filtra con hay_bloqueo() en las dos
---      direcciones, igual que hace get_candidatos().
---   2. No excluía perfiles dados de baja ni a medio registrar.
+-- ------------------------------------------------------------------
+-- ESTA VERSIÓN UNIFICA DOS QUE SE ESCRIBIERON EN PARALELO
+-- ------------------------------------------------------------------
+-- La función se definió dos veces sin que una rama supiera de la otra: en la
+-- 0010 (`likes_recibidos`) y en la que era 0010 de la otra rama
+-- (`mis_likes_recibidos`). Ninguna de las dos estaba completa:
+--
+--   - A la de 0010 le faltaban los filtros de visibilidad: al ser SECURITY
+--     DEFINER saltea la RLS de `profiles`, así que quien te bloqueó seguía
+--     apareciendo en tu lista de likes recibidos, igual que los perfiles dados
+--     de baja o a medio registrar.
+--   - A la otra le faltaba el `grant execute`, sin el cual el cliente recibe
+--     "permission denied for function".
+--
+-- Acá van las dos cosas. Se ejecuta después de 0014 a propósito: esa migración
+-- recrea el tipo `intencion`, y al hacerlo vuelve a crear esta función tal como
+-- estaba antes (guarda y restaura las funciones que referencian el tipo). Este
+-- CREATE OR REPLACE la deja después en su forma definitiva.
 
 create or replace function mis_likes_recibidos()
 returns table (
@@ -1240,12 +1419,14 @@ as $$
   order by s.created_at desc
 $$;
 
+grant execute on function mis_likes_recibidos() to authenticated;
+
 -- ############################################################
--- ### migrations/0011_limite_likes_plan_gratis.sql
+-- ### migrations/0016_cupo_de_likes.sql
 -- ############################################################
 
--- UADencuentros — planes y límite diario de likes
--- Ejecutar después de 0010.
+-- UADencuentros — límite diario de likes del plan gratuito
+-- Ejecutar después de 0015.
 --
 -- El plan gratuito puede dar 25 likes por día. Los "pass" no consumen nada:
 -- si descartar costara cupo, la gente dejaría de mirar perfiles.
@@ -1258,21 +1439,18 @@ $$;
 begin;
 
 -- ============================================================
--- 1. Plan de cada perfil
+-- 1. El plan de cada perfil lo define 0013
 -- ============================================================
--- Enum y no texto libre: son tres valores que cambian poco, y así un typo no
--- deja a alguien con un plan inexistente (que caería en el caso "no gratis" y
--- le daría likes ilimitados gratis).
-
-do $$
-begin
-  if not exists (select 1 from pg_type where typname = 'plan_suscripcion') then
-    create type plan_suscripcion as enum ('gratis', 'plus', 'gold');
-  end if;
-end $$;
-
-alter table profiles
-  add column if not exists plan plan_suscripcion not null default 'gratis';
+-- Esta migración se escribió en paralelo a 0013 y también agregaba
+-- `profiles.plan`, pero como un enum `plan_suscripcion` en vez de un `text`
+-- con CHECK. Se quedó la de 0013, que es la que ya está aplicada y la que lee
+-- el front (`src/lib/planes.ts`). Acá solo se consume la columna.
+--
+-- Los valores son los mismos ('gratis', 'plus', 'gold'), así que las
+-- comparaciones de más abajo (`plan = 'gratis'`) funcionan igual contra text.
+-- El CHECK de 0013 cubre lo que cubría el enum: un typo no puede dejar a
+-- alguien con un plan inexistente que caiga en el caso "no gratis" y le dé
+-- likes ilimitados.
 
 -- ============================================================
 -- 2. Cuánto queda
@@ -1450,4 +1628,3 @@ on conflict (nombre) do nothing;
 -- Las materias van vacías a propósito: conviene cargarlas por carrera cuando
 -- definamos el flujo de "buscar compañero de estudio", para no llenar la tabla
 -- con un plan de estudios que quizás no usemos.
-

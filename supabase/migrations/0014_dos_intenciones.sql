@@ -1,5 +1,5 @@
 -- UADencuentros — de tres intenciones a dos
--- Ejecutar después de 0008.
+-- Ejecutar después de 0013.
 --
 -- Cambia el producto: quedan solo `match` y `estudio`.
 --   match   → gente que NO es de tu mismo género
@@ -10,6 +10,28 @@
 -- 'amistad' se borran, porque esa intención ya no existe en el producto.
 --
 -- OJO: esto borra datos. Los matches de amistad y sus conversaciones se van.
+--
+-- ------------------------------------------------------------------
+-- POR QUÉ ESTA MIGRACIÓN VUELVE A APARECER DESPUÉS DE 0011
+-- ------------------------------------------------------------------
+-- Esta migración se escribió originalmente como 0009 y ya se había aplicado a
+-- la base compartida. La 0011 (`arreglar_enum_intencion`) la interpretó como un
+-- accidente —un rename hecho a mano desde el dashboard de Supabase— y la
+-- revirtió, restaurando `citas` y `amistad` y borrando las filas con `match`.
+--
+-- No fue un accidente: pasar a dos lentes es una decisión de producto. Así que
+-- se vuelve a aplicar acá, ahora ordenada después de 0013 para que el estado
+-- final del enum sea el que espera el front (`src/lib/tipos.ts` →
+-- `Intencion = 'match' | 'estudio'`).
+--
+-- El paso 2 tolera el estado que dejó 0011: en este punto el enum puede tener
+-- los cuatro valores (`match`, `estudio`, `citas`, `amistad`). El USING mapea
+-- `citas`→`match` y deja `match` y `estudio` como están; las filas `amistad`
+-- ya se borraron en el paso 1.
+--
+-- Los datos que 0011 borró no se recuperan. Según su propio comentario eran
+-- perfiles y swipes de prueba del seed, así que se vuelve a correr
+-- `scripts/seed-demo.mjs` y listo.
 
 begin;
 
